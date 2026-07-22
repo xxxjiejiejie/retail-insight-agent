@@ -26,6 +26,13 @@ services:
     environment:
       DATABASE_URL: mysql+aiomysql://retail_readonly:readonly-local-dev@mysql:3306/retail_insight
       CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+      MODEL_CACHE_PATH: /models
+      MODEL_LOCAL_FILES_ONLY: "true"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      - ${HOST_MODEL_CACHE_PATH:-./data/runtime/model_cache}:/models:ro
+      - ./data/vector_store:/app/data/vector_store
     ports:
       - "8000:8000"
     depends_on:
@@ -42,7 +49,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
-      start_period: 5s
+      start_period: 15s
 
   frontend:
     build: ./frontend

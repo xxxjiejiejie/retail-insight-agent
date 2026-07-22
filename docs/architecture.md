@@ -94,6 +94,6 @@ LLM 不生成图片，也不执行绘图代码。后端只允许：
 - 文档仅支持 Markdown，尚未加入 PDF/DOCX；
 - 尚未实现 BM25 混合召回和增量索引；
 - Hybrid 目前合并两个分支答案，尚未增加第三次统一总结调用；
-- GPU RAG API 尚未打入完整 Docker 镜像；
+- 已提供 CPU RAG API 的完整 Compose 镜像，并从主机只读挂载模型缓存；GPU 推理仍通过主机 Python 环境运行，尚未提供 NVIDIA Container Toolkit 版镜像；
 - Vue 主包仍有约 732KB gzip 的分包优化空间；
 - 当前评测规模仍小，需要扩展到 50～100 条综合用例。

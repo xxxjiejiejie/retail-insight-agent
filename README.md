@@ -16,6 +16,7 @@
 - DeepSeek 基于证据生成答案，只返回答案中实际使用的 `[数字]` 引用；
 - Hybrid 问题拆分为数据与制度子问题并行执行；
 - Vue 3 + TypeScript + Element Plus + ECharts 页面，展示 SQL、表格、图表、引用、错误状态、延迟和 Token；
+- CPU 版 FastAPI、Vue 与 MySQL 的完整 Docker Compose 部署；BGE 模型从主机缓存只读挂载并离线加载；
 - Python 3.12、pytest、Ruff、MyPy 和可重复评测脚本。
 
 当前真实评测结果：
@@ -34,7 +35,7 @@
 - LangGraph Checkpointer、会话持久化与 SSE；
 - BM25 + 向量混合召回；
 - 50～100 条 SQL/RAG/Hybrid 综合评测；
-- GPU RAG API 的完整 Docker 镜像。当前本地 GPU RAG 从主机 Python 环境运行，MySQL 可继续使用 Compose。
+- GPU RAG API 镜像。当前 Compose 使用约 488MB 的 CPU API 镜像保证可移植部署；需要更快的 RAG 推理时，仍使用主机 Python + RTX 4060。
 
 ## 架构
 
@@ -112,6 +113,7 @@ LLM_API_KEY=仅在本机填写新密钥
 DATA_AS_OF_DATE=2026-06-30
 
 MODEL_CACHE_PATH=./data/runtime/model_cache
+HOST_MODEL_CACHE_PATH=./data/runtime/model_cache
 MODEL_LOCAL_FILES_ONLY=false
 EMBEDDING_MODEL=BAAI/bge-small-zh-v1.5
 RERANKER_MODEL=BAAI/bge-reranker-base
@@ -154,6 +156,24 @@ uvicorn app.main:app --reload
 
 - 文档：<http://localhost:8000/docs>
 - 健康检查：<http://localhost:8000/api/v1/health>
+
+### 完整 Docker Compose（CPU RAG）
+
+先确保两个 BGE 模型已下载，并在本机 `.env` 中将 `HOST_MODEL_CACHE_PATH` 指向 Hugging Face 缓存根目录。例如：
+
+```dotenv
+HOST_MODEL_CACHE_PATH=E:/AIModels/huggingface
+```
+
+随后运行：
+
+```powershell
+docker compose --progress plain build api
+docker compose up -d --force-recreate api frontend
+docker compose ps
+```
+
+Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 <http://localhost:8080>；API 为 <http://localhost:8000>。本机实测镜像约 488MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。
 
 ### Vue
 
