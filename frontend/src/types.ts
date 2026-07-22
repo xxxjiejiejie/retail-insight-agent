@@ -58,3 +58,25 @@ export interface ChatResponse {
   errors: string[]
   metrics: ChatMetrics
 }
+
+export interface ChatTurn {
+  turn_id: string
+  created_at: string
+  query: string
+  intent: Intent
+  answer: string
+  generated_sql?: string | null
+  citations: Citation[]
+  errors: string[]
+  metrics: ChatMetrics
+}
+
+export interface SessionHistoryResponse {
+  session_id: string
+  turns: ChatTurn[]
+}
+
+export interface SessionDeleteResponse {
+  session_id: string
+  deleted: boolean
+}

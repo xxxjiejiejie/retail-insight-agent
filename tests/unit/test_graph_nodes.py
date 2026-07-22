@@ -1,6 +1,7 @@
 import pytest
 
 from app.graph import nodes
+from app.graph.state import merge_turns
 
 
 @pytest.mark.asyncio
@@ -37,6 +38,36 @@ def test_split_hybrid_query_separates_data_and_policy_questions() -> None:
 
     assert sql_query == "2026年6月哪些门店没有完成销售目标"
     assert rag_query == "销售目标完成率在绩效中的权重"
+
+
+def test_persist_turn_node_keeps_only_lightweight_history() -> None:
+    result = nodes.persist_turn_node(
+        {
+            "user_query": "你好",
+            "intent": "general",
+            "answer": "你好，请问需要分析什么？",
+            "sql_result": {"rows": [{"large": "payload"}]},
+            "citations": [],
+            "errors": [],
+            "metrics": {"total_tokens": 0},
+        }
+    )
+
+    turn = result["turns"][0]
+    assert turn["query"] == "你好"
+    assert turn["intent"] == "general"
+    assert "sql_result" not in turn
+
+
+def test_session_history_keeps_latest_twenty_turns() -> None:
+    existing = [{"turn_id": str(index)} for index in range(19)]
+    new = [{"turn_id": str(index)} for index in range(19, 25)]
+
+    merged = merge_turns(existing, new)
+
+    assert len(merged) == 20
+    assert merged[0]["turn_id"] == "5"
+    assert merged[-1]["turn_id"] == "24"
 
 
 @pytest.mark.asyncio

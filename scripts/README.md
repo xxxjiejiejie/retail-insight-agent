@@ -17,4 +17,8 @@
 - `evaluate_rag.py`：运行 20 条真实 DeepSeek RAG 评测。
 - `verify_api_e2e.py`：通过 FastAPI ASGI 接口验证一条真实 Hybrid 请求。
 
+## 会话与 SSE
+
+- `verify_session_stream.py --reset`：经公开 API 验证 SSE 事件顺序、最终结果和 SQLite 会话落库；默认使用 General 问题，不调用付费模型。
+
 报告写入 Git 忽略的 `data/runtime`。脚本不得输出 Key，也不得把本机绝对路径写入可提交配置。

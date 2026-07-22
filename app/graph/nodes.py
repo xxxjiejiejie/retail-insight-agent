@@ -1,5 +1,7 @@
 import asyncio
+from datetime import UTC, datetime
 from time import perf_counter
+from uuid import uuid4
 
 from app.graph.router import classify_intent
 from app.graph.state import AgentState
@@ -108,3 +110,20 @@ async def hybrid_node(state: AgentState) -> dict:
 
 def route_key(state: AgentState) -> str:
     return state["intent"]
+
+
+def persist_turn_node(state: AgentState) -> dict:
+    """Append a compact, JSON-serializable turn to the checkpointed session."""
+
+    turn = {
+        "turn_id": str(uuid4()),
+        "created_at": datetime.now(UTC).isoformat(),
+        "query": state["user_query"],
+        "intent": state["intent"],
+        "answer": state.get("answer") or "当前分支没有返回答案。",
+        "generated_sql": state.get("generated_sql"),
+        "citations": state.get("citations", []),
+        "errors": state.get("errors", []),
+        "metrics": state.get("metrics", {}),
+    }
+    return {"turns": [turn]}

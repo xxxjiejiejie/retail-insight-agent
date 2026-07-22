@@ -1,6 +1,14 @@
-from typing import Any, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict
 
 Intent = Literal["sql", "rag", "hybrid", "clarify", "general"]
+MAX_SESSION_TURNS = 20
+
+
+def merge_turns(
+    existing: list[dict[str, Any]],
+    new: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [*existing, *new][-MAX_SESSION_TURNS:]
 
 
 class AgentState(TypedDict, total=False):
@@ -20,3 +28,4 @@ class AgentState(TypedDict, total=False):
     retry_count: int
     errors: list[str]
     metrics: dict[str, Any]
+    turns: Annotated[list[dict[str, Any]], merge_turns]

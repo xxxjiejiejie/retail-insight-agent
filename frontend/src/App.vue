@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 
-import { sendQuestion } from "./api"
+import { deleteSession, getSessionHistory, streamQuestion } from "./api"
 import ChartPanel from "./components/ChartPanel.vue"
-import type { ChatResponse } from "./types"
+import type { ChatResponse, ChatTurn } from "./types"
+
+const SESSION_STORAGE_KEY = "retail-insight-session-id"
+
+function currentSessionId(): string {
+  const stored = localStorage.getItem(SESSION_STORAGE_KEY)
+  if (stored && /^[A-Za-z0-9._-]{1,128}$/.test(stored)) return stored
+  const created = crypto.randomUUID()
+  localStorage.setItem(SESSION_STORAGE_KEY, created)
+  return created
+}
 
 const query = ref("")
 const loading = ref(false)
+const loadingStatus = ref("")
 const error = ref("")
 const result = ref<ChatResponse | null>(null)
-const sessionId = crypto.randomUUID()
+const history = ref<ChatTurn[]>([])
+const sessionId = ref(currentSessionId())
 
 const canSend = computed(() => query.value.trim().length >= 2 && !loading.value)
 const sqlRows = computed(() => result.value?.sql_result?.rows ?? [])
@@ -27,21 +39,72 @@ const metricItems = computed(() => {
     { label: "生成次数", value: metrics.attempt_count, unit: "次" },
     { label: "有效证据", value: metrics.evidence_count, unit: "条" },
     { label: "引用数", value: metrics.citation_count, unit: "条" },
-  ].filter((item) => item.value !== undefined)
+  ].filter((item) => item.value !== undefined && item.value !== null)
 })
+
+const nodeLabels: Record<string, string> = {
+  route: "正在判断问题类型",
+  sql: "正在生成并执行安全 SQL",
+  rag: "正在检索和重排制度依据",
+  hybrid: "正在并行分析经营数据与制度",
+  clarify: "正在整理澄清问题",
+  general: "正在生成回答",
+  persist_turn: "正在保存会话",
+}
+
+async function refreshHistory(): Promise<void> {
+  const response = await getSessionHistory(sessionId.value)
+  history.value = response.turns
+}
 
 async function submit(): Promise<void> {
   if (!canSend.value) return
   loading.value = true
+  loadingStatus.value = "正在连接分析服务"
   error.value = ""
   try {
-    result.value = await sendQuestion(query.value.trim(), sessionId)
+    result.value = await streamQuestion(query.value.trim(), sessionId.value, (event, data) => {
+      if (event === "node") {
+        const node = String(data.node || "")
+        loadingStatus.value = nodeLabels[node] || "正在处理"
+      } else if (event === "heartbeat") {
+        loadingStatus.value = loadingStatus.value || "正在处理"
+      }
+    })
+    await refreshHistory()
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : "请求失败，请检查后端是否启动。"
+    if (reason instanceof DOMException && reason.name === "AbortError") {
+      error.value = "请求超过 3 分钟，已自动停止。"
+    } else {
+      error.value = reason instanceof Error ? reason.message : "请求失败，请检查后端是否启动。"
+    }
   } finally {
     loading.value = false
+    loadingStatus.value = ""
   }
 }
+
+async function clearSession(): Promise<void> {
+  error.value = ""
+  try {
+    await deleteSession(sessionId.value)
+    sessionId.value = crypto.randomUUID()
+    localStorage.setItem(SESSION_STORAGE_KEY, sessionId.value)
+    history.value = []
+    result.value = null
+    query.value = ""
+  } catch (reason) {
+    error.value = reason instanceof Error ? reason.message : "清空会话失败。"
+  }
+}
+
+onMounted(async () => {
+  try {
+    await refreshHistory()
+  } catch (reason) {
+    error.value = reason instanceof Error ? reason.message : "读取会话历史失败。"
+  }
+})
 </script>
 
 <template>
@@ -61,14 +124,33 @@ async function submit(): Promise<void> {
         @keydown.ctrl.enter="submit"
       />
       <div class="query-actions">
-        <span>Ctrl + Enter 发送</span>
-        <el-button type="primary" :loading="loading" :disabled="!canSend" @click="submit">
-          提交问题
-        </el-button>
+        <span>{{ loadingStatus || "Ctrl + Enter 发送" }}</span>
+        <div class="action-buttons">
+          <el-button :disabled="loading" @click="clearSession">清空并新建会话</el-button>
+          <el-button type="primary" :loading="loading" :disabled="!canSend" @click="submit">
+            提交问题
+          </el-button>
+        </div>
       </div>
     </el-card>
 
     <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+
+    <el-card v-if="history.length" class="history-card" shadow="never">
+      <template #header>
+        <div class="card-heading">
+          <strong>会话记录</strong>
+          <el-tag type="info">{{ history.length }} 轮</el-tag>
+        </div>
+      </template>
+      <ol class="turn-list">
+        <li v-for="turn in history" :key="turn.turn_id" class="turn-item">
+          <div class="turn-question"><strong>你：</strong>{{ turn.query }}</div>
+          <div class="turn-answer"><strong>助手：</strong>{{ turn.answer }}</div>
+          <div class="turn-meta">{{ turn.intent }} · {{ new Date(turn.created_at).toLocaleString() }}</div>
+        </li>
+      </ol>
+    </el-card>
 
     <section v-if="result" class="result-grid">
       <el-card shadow="never">

@@ -30,9 +30,11 @@ services:
       MODEL_LOCAL_FILES_ONLY: "true"
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
+      LANGGRAPH_STRICT_MSGPACK: "true"
     volumes:
       - ${HOST_MODEL_CACHE_PATH:-./data/runtime/model_cache}:/models:ro
       - ./data/vector_store:/app/data/vector_store
+      - ./data/runtime:/app/data/runtime
     ports:
       - "8000:8000"
     depends_on:

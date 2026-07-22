@@ -44,9 +44,48 @@ body {
 }
 
 .query-card,
+.history-card,
 .result-grid > * {
   border: 1px solid #dce8e4;
   border-radius: 16px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.history-card {
+  margin-top: 18px;
+}
+
+.turn-list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.turn-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f3f7f5;
+}
+
+.turn-question,
+.turn-answer {
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.turn-answer {
+  margin-top: 6px;
+}
+
+.turn-meta {
+  margin-top: 8px;
+  color: #789089;
+  font-size: 12px;
 }
 
 .query-actions,
@@ -134,5 +173,15 @@ body {
   .page-shell {
     width: min(100% - 20px, 1080px);
     padding-top: 28px;
+  }
+
+  .query-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }

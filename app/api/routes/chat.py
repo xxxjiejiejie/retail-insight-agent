@@ -1,4 +1,10 @@
-from fastapi import APIRouter
+import asyncio
+import json
+from collections.abc import AsyncIterator
+from typing import Any
+
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas import ChatRequest, ChatResponse
 from app.graph.workflow import get_graph
@@ -6,31 +12,116 @@ from app.graph.workflow import get_graph
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
-    graph = get_graph()
-    initial_state = {
+def get_runtime_graph(request: Request) -> Any:
+    return getattr(request.app.state, "graph", None) or get_graph()
+
+
+def initial_state(request: ChatRequest) -> dict[str, Any]:
+    return {
         "user_query": request.query,
         "session_id": request.session_id,
+        "clarification": None,
+        "selected_tables": [],
+        "schema_context": "",
+        "generated_sql": None,
+        "sql_validation": None,
+        "sql_result": None,
+        "chart_spec": None,
+        "answer": None,
         "retry_count": 0,
         "errors": [],
         "retrieved_docs": [],
         "citations": [],
         "metrics": {},
     }
-    result = await graph.ainvoke(
-        initial_state,
-        config={"configurable": {"thread_id": request.session_id}},
-    )
+
+
+def response_from_state(request: ChatRequest, state: dict[str, Any]) -> ChatResponse:
     return ChatResponse(
         session_id=request.session_id,
-        intent=result["intent"],
-        answer=result.get("answer") or "当前分支没有返回答案。",
-        clarification=result.get("clarification"),
-        generated_sql=result.get("generated_sql"),
-        sql_result=result.get("sql_result"),
-        chart_spec=result.get("chart_spec"),
-        citations=result.get("citations", []),
-        errors=result.get("errors", []),
-        metrics=result.get("metrics", {}),
+        intent=state["intent"],
+        answer=state.get("answer") or "当前分支没有返回答案。",
+        clarification=state.get("clarification"),
+        generated_sql=state.get("generated_sql"),
+        sql_result=state.get("sql_result"),
+        chart_spec=state.get("chart_spec"),
+        citations=state.get("citations", []),
+        errors=state.get("errors", []),
+        metrics=state.get("metrics", {}),
+    )
+
+
+def encode_sse(event: str, data: dict[str, Any]) -> str:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+@router.post("", response_model=ChatResponse)
+async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
+    graph = get_runtime_graph(request)
+    state = initial_state(payload)
+    result = await graph.ainvoke(
+        state,
+        config={"configurable": {"thread_id": payload.session_id}},
+    )
+    return response_from_state(payload, result)
+
+
+@router.post("/stream")
+async def chat_stream(payload: ChatRequest, request: Request) -> StreamingResponse:
+    graph = get_runtime_graph(request)
+    config = {"configurable": {"thread_id": payload.session_id}}
+
+    async def event_stream() -> AsyncIterator[str]:
+        accumulated = initial_state(payload)
+        yield encode_sse("start", {"session_id": payload.session_id})
+        iterator = graph.astream(accumulated, config=config, stream_mode="updates").__aiter__()
+        next_update: asyncio.Task[Any] | None = None
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                if next_update is None:
+                    next_update = asyncio.create_task(anext(iterator))
+                done, _ = await asyncio.wait({next_update}, timeout=10)
+                if not done:
+                    yield encode_sse("heartbeat", {"status": "running"})
+                    continue
+                try:
+                    update = next_update.result()
+                except StopAsyncIteration:
+                    break
+                finally:
+                    next_update = None
+
+                if not isinstance(update, dict):
+                    continue
+                for node_name, node_update in update.items():
+                    if isinstance(node_update, dict):
+                        accumulated.update(node_update)
+                    yield encode_sse("node", {"node": node_name})
+
+            if "intent" not in accumulated:
+                raise RuntimeError("graph completed without an intent")
+            response = response_from_state(payload, accumulated)
+            yield encode_sse("result", response.model_dump(mode="json"))
+            yield encode_sse("done", {"session_id": payload.session_id})
+        except asyncio.CancelledError:
+            if next_update is not None:
+                next_update.cancel()
+            raise
+        except Exception:
+            if next_update is not None:
+                next_update.cancel()
+            yield encode_sse("error", {"message": "请求处理失败，请稍后重试。"})
+            yield encode_sse("done", {"session_id": payload.session_id})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )

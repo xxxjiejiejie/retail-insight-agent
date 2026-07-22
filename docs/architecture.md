@@ -1,14 +1,32 @@
-# v0.3 架构说明
+# v0.4 架构说明
 
 ## 请求生命周期
 
-1. Vue 将 `query` 和 `session_id` 发送到 `POST /api/v1/chat`。
+1. Vue 将持久化在浏览器本地的 `session_id` 与 `query` 发送到 `POST /api/v1/chat/stream`。
 2. FastAPI 创建 `AgentState`，LangGraph 的规则路由判断 SQL、RAG、Hybrid、Clarify 或 General。
 3. SQL 分支读取真实 Schema，由 DeepSeek 返回 JSON SQL 计划，经 SQLGlot 和白名单校验后用只读账号执行。
 4. RAG 分支从 Chroma 召回 12 个制度块，BGE Reranker 保留 5 个，再按相关度阈值筛选证据。
 5. DeepSeek 只能依据筛选后的上下文回答；服务解析答案中的 `[数字]`，仅返回实际使用的引用。
 6. Hybrid 分支先按“并说明/同时说明”等连接词拆分数据和制度子问题，再并行运行 SQL 与 RAG，最后合并答案、错误和指标。
-7. FastAPI 返回统一响应，Vue 展示回答、SQL、表格、ECharts 图表、引用和运行指标。
+7. LangGraph 在公共终止节点追加一条轻量 turn，`AsyncSqliteSaver` 将图状态写入 `data/runtime/sessions.db`。
+8. FastAPI 通过 SSE 发送节点进度、心跳和统一结果；Vue 展示回答、SQL、表格、ECharts、引用、指标与最近 20 轮历史。
+
+## 会话与 SSE
+
+```text
+Vue localStorage session_id
+→ POST /chat/stream
+→ LangGraph thread_id
+→ route/branch/persist_turn 节点事件
+→ AsyncSqliteSaver
+→ SQLite sessions.db
+→ SSE result/done
+→ GET /sessions/{session_id} 恢复历史
+```
+
+每轮开始前会显式清空 SQL/RAG 分支临时字段，避免 Checkpointer 将上一轮 SQL、引用或澄清信息带入新分支。历史 reducer 只保留最近 20 轮，turn 不保存大体积 `sql_result`。Checkpointer 仍会保存图运行状态，因此当前 SQLite 方案定位为本地演示；生产环境应迁移到 Postgres 并增加保留策略。
+
+SSE 使用 POST + Fetch 流式读取，事件为 `start`、`node`、`heartbeat`、`result`、`error`、`done`。Nginx 关闭代理缓冲，长节点每 10 秒发送心跳。当前 DeepSeek 客户端不是 Token 流式客户端，因此系统只承诺节点级进度，不宣称逐 Token 生成。
 
 ## Text-to-SQL
 
@@ -90,7 +108,7 @@ LLM 不生成图片，也不执行绘图代码。后端只允许：
 
 ## 当前技术债
 
-- 尚未实现 LangGraph Checkpointer、会话持久化和 SSE；
+- 已保存会话历史，但尚未将历史摘要注入路由/提示词实现代词与省略式追问；
 - 文档仅支持 Markdown，尚未加入 PDF/DOCX；
 - 尚未实现 BM25 混合召回和增量索引；
 - Hybrid 目前合并两个分支答案，尚未增加第三次统一总结调用；

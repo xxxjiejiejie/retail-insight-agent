@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-当前为 **v0.3 制度 RAG 第一版**，已经实现：
+当前为 **v0.4 会话持久化与 SSE 第一版**，已经实现：
 
 - FastAPI `POST /api/v1/chat` 与 LangGraph 条件路由；
 - DeepSeek V4 Pro Anthropic 兼容客户端；
@@ -17,6 +17,9 @@
 - Hybrid 问题拆分为数据与制度子问题并行执行；
 - Vue 3 + TypeScript + Element Plus + ECharts 页面，展示 SQL、表格、图表、引用、错误状态、延迟和 Token；
 - CPU 版 FastAPI、Vue 与 MySQL 的完整 Docker Compose 部署；BGE 模型从主机缓存只读挂载并离线加载；
+- LangGraph `AsyncSqliteSaver` Checkpointer、最近 20 轮轻量会话记录、查询与清空接口；
+- `POST /api/v1/chat/stream` SSE 节点进度流，含 10 秒心跳、最终结果与安全错误事件；
+- Vue 将会话 ID 保存在浏览器本地，刷新后从 SQLite 恢复历史，并可清空后创建新会话；
 - Python 3.12、pytest、Ruff、MyPy 和可重复评测脚本。
 
 当前真实评测结果：
@@ -32,7 +35,6 @@
 尚未完成：
 
 - PDF/DOCX 解析和增量索引；
-- LangGraph Checkpointer、会话持久化与 SSE；
 - BM25 + 向量混合召回；
 - 50～100 条 SQL/RAG/Hybrid 综合评测；
 - GPU RAG API 镜像。当前 Compose 使用约 488MB 的 CPU API 镜像保证可移植部署；需要更快的 RAG 推理时，仍使用主机 Python + RTX 4060。
@@ -175,6 +177,8 @@ docker compose ps
 
 Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 <http://localhost:8080>；API 为 <http://localhost:8000>。本机实测镜像约 488MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。
 
+`data/runtime` 挂载到容器内同名目录，SQLite 会话数据库因此能跨 API 容器重启保留。会话只保留最近 20 轮轻量记录；当前路由和回答仍以本轮问题为主，尚未把历史摘要注入模型完成指代消解。
+
 ### Vue
 
 ```powershell
@@ -204,6 +208,7 @@ python scripts/evaluate_sql_smoke.py
 python scripts/verify_rag_answer.py
 python scripts/evaluate_rag.py
 python scripts/verify_api_e2e.py
+python scripts/verify_session_stream.py --reset
 ```
 
 不调用付费模型的脚本：
@@ -229,6 +234,13 @@ Content-Type: application/json
 ```
 
 响应会根据分支返回 `generated_sql`、`sql_result`、`chart_spec`、`citations`、`errors` 和 `metrics`。引用包含制度名、版本、章节、段落编号、原文片段和相关度。
+
+流式接口为 `POST /api/v1/chat/stream`，依次发送 `start`、`node`、可选 `heartbeat`、`result` 和 `done` 事件。这里的“流式”是可观测的 LangGraph 节点进度与最终结果，不是伪造的逐 Token 输出。
+
+会话接口：
+
+- `GET /api/v1/sessions/{session_id}`：读取最近 20 轮；
+- `DELETE /api/v1/sessions/{session_id}`：删除指定会话，不影响其他会话。
 
 ## 安全边界
 

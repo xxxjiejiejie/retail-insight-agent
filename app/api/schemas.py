@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -8,7 +9,12 @@ from app.graph.state import Intent
 
 class ChatRequest(BaseModel):
     query: str = Field(min_length=2, max_length=1000)
-    session_id: str = Field(default_factory=lambda: str(uuid4()))
+    session_id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._-]+$",
+    )
 
 
 class Citation(BaseModel):
@@ -53,6 +59,28 @@ class ChatResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     metrics: ChatMetrics = Field(default_factory=ChatMetrics)
+
+
+class ChatTurn(BaseModel):
+    turn_id: str
+    created_at: datetime
+    query: str
+    intent: Intent
+    answer: str
+    generated_sql: str | None = None
+    citations: list[Citation] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    metrics: ChatMetrics = Field(default_factory=ChatMetrics)
+
+
+class SessionHistoryResponse(BaseModel):
+    session_id: str
+    turns: list[ChatTurn] = Field(default_factory=list)
+
+
+class SessionDeleteResponse(BaseModel):
+    session_id: str
+    deleted: bool
 
 
 class HealthResponse(BaseModel):
