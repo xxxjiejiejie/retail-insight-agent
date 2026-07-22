@@ -36,6 +36,10 @@ dev = [
   "ruff>=0.8,<1.0",
   "mypy>=1.13,<2.0",
 ]
+rag = [
+  "chromadb>=1.0,<2.0",
+  "sentence-transformers>=5.0,<6.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

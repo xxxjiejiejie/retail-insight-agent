@@ -33,8 +33,13 @@ class Settings(BaseSettings):
 
     vector_store: str = "chroma"
     vector_store_path: str = "./data/vector_store"
-    embedding_model: str = "BAAI/bge-m3"
+    model_cache_path: str = ""
+    model_local_files_only: bool = False
+    embedding_model: str = "BAAI/bge-small-zh-v1.5"
     reranker_model: str = "BAAI/bge-reranker-base"
+    rag_retrieval_top_k: int = 12
+    rag_rerank_top_k: int = 5
+    rag_min_relevance_score: float = 0.2
 
     max_sql_retries: int = 2
     max_result_rows: int = 500

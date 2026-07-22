@@ -6,6 +6,33 @@ from app.rag.service import handle_rag_question
 from app.sql_agent.service import handle_sql_question
 
 
+def merge_hybrid_metrics(
+    sql_metrics: dict,
+    rag_metrics: dict,
+    *,
+    total_ms: float,
+) -> dict:
+    merged = {**sql_metrics, **rag_metrics}
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens", "attempt_count"):
+        numeric_values: list[int | float] = []
+        for metrics in (sql_metrics, rag_metrics):
+            value: object = metrics.get(key)
+            if isinstance(value, (int, float)):
+                numeric_values.append(value)
+        if numeric_values:
+            merged[key] = sum(numeric_values)
+    llm_latencies: list[int | float] = []
+    for metrics in (sql_metrics, rag_metrics):
+        value = metrics.get("llm_latency_ms")
+        if isinstance(value, (int, float)):
+            llm_latencies.append(value)
+    if llm_latencies:
+        merged["llm_latency_ms"] = round(sum(llm_latencies), 2)
+    merged["total_latency_ms"] = round(total_ms, 2)
+    merged["hybrid_branch_ms"] = round(total_ms, 2)
+    return merged
+
+
 def route_node(state: AgentState) -> dict:
     return {"intent": classify_intent(state["user_query"])}
 
@@ -53,10 +80,12 @@ async def hybrid_node(state: AgentState) -> dict:
         "retrieved_docs": rag_result.get("retrieved_docs", []),
         "citations": rag_result.get("citations", []),
         "answer": f"{sql_result['answer']}\n\n{rag_result['answer']}",
-        "metrics": {
-            **sql_result.get("metrics", {}),
-            "hybrid_branch_ms": round((perf_counter() - started) * 1000, 2),
-        },
+        "errors": [*sql_result.get("errors", []), *rag_result.get("errors", [])],
+        "metrics": merge_hybrid_metrics(
+            sql_result.get("metrics", {}),
+            rag_result.get("metrics", {}),
+            total_ms=(perf_counter() - started) * 1000,
+        ),
     }
 
 

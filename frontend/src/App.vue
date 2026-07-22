@@ -21,8 +21,11 @@ const metricItems = computed(() => {
     { label: "总耗时", value: metrics.total_latency_ms, unit: "ms" },
     { label: "LLM 耗时", value: metrics.llm_latency_ms, unit: "ms" },
     { label: "SQL 耗时", value: metrics.sql_execution_ms, unit: "ms" },
+    { label: "检索耗时", value: metrics.retrieval_ms, unit: "ms" },
+    { label: "重排耗时", value: metrics.rerank_ms, unit: "ms" },
     { label: "Token", value: metrics.total_tokens, unit: "" },
     { label: "生成次数", value: metrics.attempt_count, unit: "次" },
+    { label: "引用数", value: metrics.citation_count, unit: "条" },
   ].filter((item) => item.value !== undefined)
 })
 
@@ -116,11 +119,17 @@ async function submit(): Promise<void> {
 
       <el-card v-if="result.citations.length" shadow="never">
         <template #header><strong>引用依据</strong></template>
-        <ul>
-          <li v-for="citation in result.citations" :key="`${citation.source}-${citation.page}`">
-            {{ citation.source }}
+        <ul class="citation-list">
+          <li
+            v-for="citation in result.citations"
+            :key="citation.chunk_id || `${citation.source}-${citation.paragraph_id}`"
+          >
+            <strong>{{ citation.source }}</strong>
+            <span v-if="citation.version"> · v{{ citation.version }}</span>
             <span v-if="citation.section"> · {{ citation.section }}</span>
+            <span v-if="citation.paragraph_id"> · {{ citation.paragraph_id }}</span>
             <span v-if="citation.page"> · 第 {{ citation.page }} 页</span>
+            <p v-if="citation.excerpt" class="citation-excerpt">{{ citation.excerpt }}</p>
           </li>
         </ul>
       </el-card>

@@ -1,0 +1,142 @@
+[
+  {
+    "id": "RAG-001",
+    "question": "门店做七五折促销需要谁审批？",
+    "expected_document_ids": ["POL-PROMO-001"],
+    "expected_sections": ["折扣审批层级"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-002",
+    "question": "八五折且预算一万元的活动由谁审批？",
+    "expected_document_ids": ["POL-PROMO-001"],
+    "expected_sections": ["折扣审批层级"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-003",
+    "question": "促销实际预算超过批准金额多少时要暂停新增投放？",
+    "expected_document_ids": ["POL-PROMO-001"],
+    "expected_sections": ["申请、执行与复盘"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-004",
+    "question": "普通商品无质量问题可以在签收后几天内退货？",
+    "expected_document_ids": ["POL-RETURN-001"],
+    "expected_sections": ["受理条件"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-005",
+    "question": "单笔退款超过五百元需要谁复核？",
+    "expected_document_ids": ["POL-RETURN-001"],
+    "expected_sections": ["门店处理流程"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-006",
+    "question": "库存差异金额为二百元时应如何审批？",
+    "expected_document_ids": ["POL-INVENTORY-001"],
+    "expected_sections": ["差异处理"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-007",
+    "question": "门店什么时候做月度全盘？",
+    "expected_document_ids": ["POL-INVENTORY-001"],
+    "expected_sections": ["盘点频率与职责"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-008",
+    "question": "会员消费多少钱积一分？",
+    "expected_document_ids": ["POL-MEMBER-001"],
+    "expected_sections": ["积分获取"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-009",
+    "question": "自然消费积分的有效期是多久？",
+    "expected_document_ids": ["POL-MEMBER-001"],
+    "expected_sections": ["积分使用与有效期"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-010",
+    "question": "商品售价调整百分之十需要哪些人审批？",
+    "expected_document_ids": ["POL-PRICE-001"],
+    "expected_sections": ["价格变更审批"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-011",
+    "question": "价签和收银结算价不一致时怎么处理？",
+    "expected_document_ids": ["POL-PRICE-001"],
+    "expected_sections": ["价签与渠道一致性"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-012",
+    "question": "发现顾客信息泄露迹象后多久内上报？",
+    "expected_document_ids": ["POL-PRIVACY-001"],
+    "expected_sections": ["事件处理与清理"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-013",
+    "question": "批量导出顾客信息由谁审批？",
+    "expected_document_ids": ["POL-PRIVACY-001"],
+    "expected_sections": ["访问与使用"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-014",
+    "question": "销售目标完成率在门店月度绩效中的权重是多少？",
+    "expected_document_ids": ["POL-PERFORMANCE-001"],
+    "expected_sections": ["指标构成"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-015",
+    "question": "门店对绩效结果有异议，应在几天内申诉？",
+    "expected_document_ids": ["POL-PERFORMANCE-001"],
+    "expected_sections": ["数据确认与申诉"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-016",
+    "question": "金额超过五千元的异常订单交给谁核查？",
+    "expected_document_ids": ["POL-ORDER-001"],
+    "expected_sections": ["核查与处置"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-017",
+    "question": "员工办理异常订单时可以向顾客索要短信验证码吗？",
+    "expected_document_ids": ["POL-ORDER-001"],
+    "expected_sections": ["核查与处置"],
+    "expect_answer": true
+  },
+  {
+    "id": "RAG-018",
+    "question": "公司为员工提供多少住房补贴？",
+    "expected_document_ids": [],
+    "expected_sections": [],
+    "expect_answer": false
+  },
+  {
+    "id": "RAG-019",
+    "question": "员工每年有多少天带薪年假？",
+    "expected_document_ids": [],
+    "expected_sections": [],
+    "expect_answer": false
+  },
+  {
+    "id": "RAG-020",
+    "question": "供应商货款在每月几号结算？",
+    "expected_document_ids": [],
+    "expected_sections": [],
+    "expect_answer": false
+  }
+]

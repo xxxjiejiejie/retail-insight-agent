@@ -113,6 +113,19 @@ body {
   font-size: 18px;
 }
 
+.citation-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.citation-excerpt {
+  margin: 6px 0 0;
+  color: #5f746e;
+  line-height: 1.65;
+}
+
 @media (max-width: 640px) {
   .page-shell {
     width: min(100% - 20px, 1080px);

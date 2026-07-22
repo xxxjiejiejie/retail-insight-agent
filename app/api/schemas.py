@@ -16,6 +16,11 @@ class Citation(BaseModel):
     section: str | None = None
     page: int | None = None
     excerpt: str | None = None
+    document_id: str | None = None
+    version: str | None = None
+    paragraph_id: str | None = None
+    chunk_id: str | None = None
+    relevance_score: float | None = None
 
 
 class ChatMetrics(BaseModel):
@@ -29,6 +34,11 @@ class ChatMetrics(BaseModel):
     sql_branch_ms: float | None = None
     rag_branch_ms: float | None = None
     hybrid_branch_ms: float | None = None
+    retrieval_ms: float | None = None
+    rerank_ms: float | None = None
+    retrieved_count: int | None = None
+    reranked_count: int | None = None
+    citation_count: int | None = None
 
 
 class ChatResponse(BaseModel):

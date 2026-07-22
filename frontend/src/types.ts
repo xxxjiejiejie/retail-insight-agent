@@ -5,6 +5,11 @@ export interface Citation {
   section?: string | null
   page?: number | null
   excerpt?: string | null
+  document_id?: string | null
+  version?: string | null
+  paragraph_id?: string | null
+  chunk_id?: string | null
+  relevance_score?: number | null
 }
 
 export interface ChartSpec {
@@ -31,6 +36,11 @@ export interface ChatMetrics {
   sql_execution_ms?: number
   total_latency_ms?: number
   sql_branch_ms?: number
+  retrieval_ms?: number
+  rerank_ms?: number
+  retrieved_count?: number
+  reranked_count?: number
+  citation_count?: number
 }
 
 export interface ChatResponse {
