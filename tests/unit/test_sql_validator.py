@@ -28,3 +28,38 @@ def test_rejects_multiple_statements() -> None:
     result = validate_read_only_sql("SELECT 1; DROP TABLE orders")
     assert not result.is_safe
 
+
+def test_rejects_unknown_column() -> None:
+    result = validate_read_only_sql(
+        "SELECT secret_value FROM orders",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"order_id", "status"}},
+    )
+    assert not result.is_safe
+    assert any("未授权的字段" in error for error in result.errors)
+
+
+def test_allows_cte_derived_column() -> None:
+    result = validate_read_only_sql(
+        "WITH totals AS (SELECT store_id, COUNT(*) AS order_count FROM orders "
+        "GROUP BY store_id) SELECT store_id, order_count FROM totals",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"store_id"}},
+    )
+    assert result.is_safe
+
+
+def test_rejects_sleep_function() -> None:
+    result = validate_read_only_sql("SELECT SLEEP(10)")
+    assert not result.is_safe
+    assert any("禁止的函数" in error for error in result.errors)
+
+
+def test_allows_order_by_select_alias() -> None:
+    result = validate_read_only_sql(
+        "SELECT store_id, COUNT(*) AS order_count FROM orders "
+        "GROUP BY store_id ORDER BY order_count DESC",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"store_id"}},
+    )
+    assert result.is_safe

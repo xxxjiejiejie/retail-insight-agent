@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from sqlalchemy import inspect
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.interfaces import ReflectedColumn
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from app.database.engine import get_business_engine
+
+
+@dataclass(slots=True, frozen=True)
+class SchemaCatalog:
+    columns: dict[str, set[str]]
+    context: str
+
+    @property
+    def tables(self) -> set[str]:
+        return set(self.columns)
+
+
+def _inspect_schema(sync_connection: Connection) -> dict[str, list[ReflectedColumn]]:
+    inspector = inspect(sync_connection)
+    if inspector is None:
+        raise RuntimeError("无法创建数据库 Schema Inspector")
+    return {
+        table_name: inspector.get_columns(table_name)
+        for table_name in sorted(inspector.get_table_names())
+    }
+
+
+async def load_schema_catalog(engine: AsyncEngine | None = None) -> SchemaCatalog:
+    business_engine = engine or get_business_engine()
+    async with business_engine.connect() as connection:
+        raw_schema = await connection.run_sync(_inspect_schema)
+
+    column_map: dict[str, set[str]] = {}
+    lines: list[str] = []
+    for table_name, columns in raw_schema.items():
+        column_map[table_name] = {str(column["name"]) for column in columns}
+        descriptions = [
+            f"{column['name']} {column['type']}"
+            + (" NOT NULL" if not column.get("nullable", True) else "")
+            for column in columns
+        ]
+        lines.append(f"TABLE {table_name} ({', '.join(descriptions)})")
+    return SchemaCatalog(columns=column_map, context="\n".join(lines))

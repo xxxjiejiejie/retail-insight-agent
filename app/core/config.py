@@ -20,12 +20,14 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     cors_origins: str = "http://localhost:5173,http://localhost:8501"
 
-    llm_provider: str = "openai_compatible"
-    llm_model: str = ""
-    llm_base_url: str = ""
+    llm_provider: str = "deepseek_anthropic"
+    llm_model: str = "deepseek-v4-pro"
+    llm_base_url: str = "https://api.deepseek.com/anthropic"
     llm_api_key: str = Field(default="", repr=False)
 
-    database_url: str = "mysql+aiomysql://retail:retail@localhost:3306/retail_insight"
+    database_url: str = (
+        "mysql+aiomysql://retail_readonly:readonly-local-dev@localhost:3307/retail_insight"
+    )
     session_database_url: str = "sqlite+aiosqlite:///./data/runtime/sessions.db"
 
     vector_store: str = "chroma"
@@ -45,4 +47,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

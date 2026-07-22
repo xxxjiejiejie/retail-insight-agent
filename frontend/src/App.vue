@@ -12,6 +12,8 @@ const result = ref<ChatResponse | null>(null)
 const sessionId = crypto.randomUUID()
 
 const canSend = computed(() => query.value.trim().length >= 2 && !loading.value)
+const sqlRows = computed(() => result.value?.sql_result?.rows ?? [])
+const sqlColumns = computed(() => result.value?.sql_result?.columns ?? [])
 
 async function submit(): Promise<void> {
   if (!canSend.value) return
@@ -70,8 +72,24 @@ async function submit(): Promise<void> {
       </el-card>
 
       <el-card v-if="result.sql_result" shadow="never">
-        <template #header><strong>查询结果</strong></template>
-        <pre class="code-block">{{ JSON.stringify(result.sql_result, null, 2) }}</pre>
+        <template #header>
+          <div class="card-heading">
+            <strong>查询结果</strong>
+            <span>
+              {{ result.sql_result.row_count }} 行 · {{ result.sql_result.execution_ms }} ms
+            </span>
+          </div>
+        </template>
+        <el-table :data="sqlRows" border stripe max-height="420">
+          <el-table-column
+            v-for="column in sqlColumns"
+            :key="column"
+            :prop="column"
+            :label="column"
+            min-width="140"
+            show-overflow-tooltip
+          />
+        </el-table>
         <ChartPanel :spec="result.chart_spec" :result="result.sql_result" />
       </el-card>
 
@@ -88,4 +106,3 @@ async function submit(): Promise<void> {
     </section>
   </main>
 </template>
-
