@@ -14,6 +14,17 @@ const sessionId = crypto.randomUUID()
 const canSend = computed(() => query.value.trim().length >= 2 && !loading.value)
 const sqlRows = computed(() => result.value?.sql_result?.rows ?? [])
 const sqlColumns = computed(() => result.value?.sql_result?.columns ?? [])
+const metricItems = computed(() => {
+  const metrics = result.value?.metrics
+  if (!metrics) return []
+  return [
+    { label: "总耗时", value: metrics.total_latency_ms, unit: "ms" },
+    { label: "LLM 耗时", value: metrics.llm_latency_ms, unit: "ms" },
+    { label: "SQL 耗时", value: metrics.sql_execution_ms, unit: "ms" },
+    { label: "Token", value: metrics.total_tokens, unit: "" },
+    { label: "生成次数", value: metrics.attempt_count, unit: "次" },
+  ].filter((item) => item.value !== undefined)
+})
 
 async function submit(): Promise<void> {
   if (!canSend.value) return
@@ -91,6 +102,16 @@ async function submit(): Promise<void> {
           />
         </el-table>
         <ChartPanel :spec="result.chart_spec" :result="result.sql_result" />
+      </el-card>
+
+      <el-card v-if="metricItems.length" shadow="never">
+        <template #header><strong>运行指标</strong></template>
+        <div class="metrics-grid">
+          <div v-for="item in metricItems" :key="item.label" class="metric-item">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }} {{ item.unit }}</strong>
+          </div>
+        </div>
       </el-card>
 
       <el-card v-if="result.citations.length" shadow="never">

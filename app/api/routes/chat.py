@@ -33,4 +33,3 @@ async def chat(request: ChatRequest) -> ChatResponse:
         citations=result.get("citations", []),
         metrics=result.get("metrics", {}),
     )
-

@@ -20,4 +20,3 @@ class AgentState(TypedDict, total=False):
     retry_count: int
     errors: list[str]
     metrics: dict[str, Any]
-

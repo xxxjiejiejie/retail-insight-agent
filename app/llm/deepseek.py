@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
+from time import perf_counter
 from typing import Any, Protocol
 
 import httpx
@@ -15,6 +16,8 @@ class LLMTextResponse:
     content: str
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    latency_ms: float = 0.0
+    model: str = ""
 
     @property
     def total_tokens(self) -> int:
@@ -60,6 +63,7 @@ class DeepSeekAnthropicClient:
             "system": system,
             "messages": [{"role": "user", "content": user}],
         }
+        started = perf_counter()
         try:
             async with httpx.AsyncClient(
                 transport=self._transport,
@@ -89,6 +93,8 @@ class DeepSeekAnthropicClient:
                 content=content,
                 prompt_tokens=int(usage.get("input_tokens", 0)),
                 completion_tokens=int(usage.get("output_tokens", 0)),
+                latency_ms=round((perf_counter() - started) * 1000, 2),
+                model=str(body.get("model") or self._settings.llm_model),
             )
         except (TypeError, ValueError) as exc:
             raise LLMResponseError("DeepSeek API 返回了无法解析的响应") from exc

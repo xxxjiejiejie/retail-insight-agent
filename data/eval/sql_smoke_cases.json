@@ -1,0 +1,27 @@
+[
+  {
+    "id": "SQL-SMOKE-001",
+    "question": "各区域有多少家门店？",
+    "reference_sql": "SELECT region, COUNT(*) AS store_count FROM stores GROUP BY region ORDER BY region"
+  },
+  {
+    "id": "SQL-SMOKE-002",
+    "question": "2026年第二季度各区域销售额是多少？",
+    "reference_sql": "SELECT s.region, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY s.region ORDER BY s.region"
+  },
+  {
+    "id": "SQL-SMOKE-003",
+    "question": "2026年第二季度销售额最高的5个商品类别是什么？",
+    "reference_sql": "SELECT p.category, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM products AS p JOIN order_items AS oi ON oi.product_id = p.product_id JOIN orders AS o ON o.order_id = oi.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY p.category ORDER BY revenue DESC LIMIT 5"
+  },
+  {
+    "id": "SQL-SMOKE-004",
+    "question": "2026年第二季度各区域订单数和客单价是多少？",
+    "reference_sql": "SELECT s.region, COUNT(DISTINCT o.order_id) AS order_count, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)) / COUNT(DISTINCT o.order_id), 2) AS average_order_value FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY s.region ORDER BY s.region"
+  },
+  {
+    "id": "SQL-SMOKE-005",
+    "question": "2026年6月各门店销售目标完成率是多少？",
+    "reference_sql": "SELECT s.store_name, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)) / st.revenue_target * 100, 2) AS target_completion_rate FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id JOIN sales_targets AS st ON st.store_id = s.store_id AND st.target_month = '2026-06-01' WHERE o.status = 'completed' AND o.order_date >= '2026-06-01' AND o.order_date < '2026-07-01' GROUP BY s.store_id, s.store_name, st.revenue_target ORDER BY target_completion_rate DESC"
+  }
+]

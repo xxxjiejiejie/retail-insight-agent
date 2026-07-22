@@ -92,9 +92,7 @@ def validate_read_only_sql(
             errors.append(f"访问了未授权的数据表：{', '.join(disallowed)}")
 
     if allowed_columns is not None:
-        select_aliases = {
-            alias.alias for alias in statement.find_all(exp.Alias) if alias.alias
-        }
+        select_aliases = {alias.alias for alias in statement.find_all(exp.Alias) if alias.alias}
         aliases = {
             (table.alias or table.name): table.name
             for table in statement.find_all(exp.Table)

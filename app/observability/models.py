@@ -9,4 +9,3 @@ class RunMetrics(BaseModel):
     estimated_cost: float = Field(default=0.0, ge=0)
     cache_hit: bool = False
     error_code: str | None = None
-

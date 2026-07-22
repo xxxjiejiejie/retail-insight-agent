@@ -29,14 +29,16 @@ def general_node(state: AgentState) -> dict:
 async def sql_node(state: AgentState) -> dict:
     started = perf_counter()
     result = await handle_sql_question(state["user_query"])
-    result["metrics"] = {"sql_branch_ms": round((perf_counter() - started) * 1000, 2)}
+    metrics = result.setdefault("metrics", {})
+    metrics["sql_branch_ms"] = round((perf_counter() - started) * 1000, 2)
     return result
 
 
 async def rag_node(state: AgentState) -> dict:
     started = perf_counter()
     result = await handle_rag_question(state["user_query"])
-    result["metrics"] = {"rag_branch_ms": round((perf_counter() - started) * 1000, 2)}
+    metrics = result.setdefault("metrics", {})
+    metrics["rag_branch_ms"] = round((perf_counter() - started) * 1000, 2)
     return result
 
 
@@ -51,10 +53,12 @@ async def hybrid_node(state: AgentState) -> dict:
         "retrieved_docs": rag_result.get("retrieved_docs", []),
         "citations": rag_result.get("citations", []),
         "answer": f"{sql_result['answer']}\n\n{rag_result['answer']}",
-        "metrics": {"hybrid_branch_ms": round((perf_counter() - started) * 1000, 2)},
+        "metrics": {
+            **sql_result.get("metrics", {}),
+            "hybrid_branch_ms": round((perf_counter() - started) * 1000, 2),
+        },
     }
 
 
 def route_key(state: AgentState) -> str:
     return state["intent"]
-

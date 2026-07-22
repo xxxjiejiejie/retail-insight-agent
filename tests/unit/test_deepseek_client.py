@@ -14,6 +14,7 @@ async def test_parses_anthropic_compatible_response() -> None:
             200,
             json={
                 "content": [{"type": "text", "text": '{"sql":"SELECT 1"}'}],
+                "model": "deepseek-v4-pro",
                 "usage": {"input_tokens": 10, "output_tokens": 4},
             },
         )
@@ -24,3 +25,5 @@ async def test_parses_anthropic_compatible_response() -> None:
 
     assert result.content == '{"sql":"SELECT 1"}'
     assert result.total_tokens == 14
+    assert result.model == "deepseek-v4-pro"
+    assert result.latency_ms >= 0

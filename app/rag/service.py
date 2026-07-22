@@ -12,4 +12,3 @@ async def handle_rag_question(query: str) -> dict[str, Any]:
             f"当前收到的问题是：{query}"
         ),
     }
-

@@ -1,8 +1,9 @@
 import os
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.database.engine import get_business_engine
+from app.core.config import get_settings
 from app.database.schema import load_schema_catalog
 from app.llm.deepseek import LLMTextResponse
 from app.sql_agent.executor import execute_read_only_sql
@@ -16,7 +17,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.mark.asyncio
 async def test_read_only_database_query() -> None:
-    engine = get_business_engine()
+    engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
     try:
         schema = await load_schema_catalog(engine)
         result = await execute_read_only_sql(
@@ -55,10 +56,15 @@ class FakeSQLGenerator:
 
 @pytest.mark.asyncio
 async def test_mock_llm_to_real_database_chain() -> None:
-    result = await handle_sql_question(
-        "各区域有多少家门店？",
-        llm_client=FakeSQLGenerator(),
-    )
-    assert result["sql_result"]["row_count"] == 4
-    assert result["chart_spec"]["x_field"] == "region"
-    assert result["metrics"]["total_tokens"] == 170
+    engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
+    try:
+        result = await handle_sql_question(
+            "各区域有多少家门店？",
+            llm_client=FakeSQLGenerator(),
+            engine=engine,
+        )
+        assert result["sql_result"]["row_count"] == 4
+        assert result["chart_spec"]["x_field"] == "region"
+        assert result["metrics"]["total_tokens"] == 170
+    finally:
+        await engine.dispose()

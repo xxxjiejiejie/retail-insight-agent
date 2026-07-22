@@ -49,4 +49,3 @@ def classify_intent(query: str) -> Intent:
     if has_rag:
         return "rag"
     return "general"
-

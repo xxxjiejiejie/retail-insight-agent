@@ -22,6 +22,17 @@ export interface SQLResult {
   executed_sql: string
 }
 
+export interface ChatMetrics {
+  attempt_count?: number
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  llm_latency_ms?: number
+  sql_execution_ms?: number
+  total_latency_ms?: number
+  sql_branch_ms?: number
+}
+
 export interface ChatResponse {
   session_id: string
   intent: Intent
@@ -31,5 +42,5 @@ export interface ChatResponse {
   sql_result?: SQLResult | null
   chart_spec?: ChartSpec | null
   citations: Citation[]
-  metrics: Record<string, unknown>
+  metrics: ChatMetrics
 }

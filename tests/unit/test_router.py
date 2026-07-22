@@ -15,4 +15,3 @@ from app.graph.router import classify_intent
 )
 def test_classify_intent(query: str, expected: str) -> None:
     assert classify_intent(query) == expected
-

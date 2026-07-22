@@ -1,3 +1,4 @@
+from datetime import date
 from functools import lru_cache
 
 from pydantic import Field
@@ -38,6 +39,7 @@ class Settings(BaseSettings):
     max_sql_retries: int = 2
     max_result_rows: int = 500
     sql_query_timeout_seconds: int = 15
+    data_as_of_date: date = date(2026, 6, 30)
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -18,6 +18,19 @@ class Citation(BaseModel):
     excerpt: str | None = None
 
 
+class ChatMetrics(BaseModel):
+    attempt_count: int | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    llm_latency_ms: float | None = None
+    sql_execution_ms: float | None = None
+    total_latency_ms: float | None = None
+    sql_branch_ms: float | None = None
+    rag_branch_ms: float | None = None
+    hybrid_branch_ms: float | None = None
+
+
 class ChatResponse(BaseModel):
     session_id: str
     intent: Intent
@@ -27,11 +40,10 @@ class ChatResponse(BaseModel):
     sql_result: dict[str, Any] | None = None
     chart_spec: dict[str, Any] | None = None
     citations: list[Citation] = Field(default_factory=list)
-    metrics: dict[str, Any] = Field(default_factory=dict)
+    metrics: ChatMetrics = Field(default_factory=ChatMetrics)
 
 
 class HealthResponse(BaseModel):
     status: str
     app: str
     environment: str
-

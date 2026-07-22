@@ -12,28 +12,29 @@
 - LangGraph 条件路由骨架；
 - SQL、RAG、Hybrid、Clarify、General 五类分支；
 - DeepSeek V4 Pro 的 Anthropic 兼容客户端；
+- 以 `2026-06-30` 数据截止日为基准的可复现相对时间解析；
 - SQLGlot AST 校验、表/字段白名单、危险函数拦截和 LIMIT 收紧；
 - MySQL 8.4 零售业务库与专用只读账号；
 - 可重复生成的模拟数据：12 家门店、60 个商品、4000 笔订单和 10005 条订单明细；
 - Schema 自动读取、只读 SQL 执行、超时和最大返回行数；
 - Mock LLM 到真实 MySQL 的完整 Text-to-SQL 集成测试；
+- SQL 失败后最多 2 次自动纠错，以及 LLM/SQL/总耗时、Token 和尝试次数统计；
+- 5 道真实 DeepSeek Text-to-SQL 冒烟评测，按数据库执行结果评分，当前为 5/5；
 - RAG 服务契约和明确的未配置提示；
 - Streamlit 原型页面；
-- Vue 3 + TypeScript + Element Plus + ECharts 前端骨架；
+- Vue 3 + TypeScript + Element Plus + ECharts 前端，展示回答、SQL、表格、图表和运行指标；
 - Dockerfile 与 Docker Compose；
 - 环境变量模板、许可证和开源来源说明。
 
-已完成的基础验证：包含真实 MySQL 集成测试在内的 pytest 23 个用例通过、Ruff 通过、MyPy 34 个源文件通过、Vue 生产构建通过、npm 审计为 0 个已知漏洞。
+已完成的基础验证：包含真实 MySQL 集成测试在内的 pytest 30 个用例通过、Ruff 通过、MyPy 36 个源文件通过、Vue 生产构建通过、npm 审计为 0 个已知漏洞；MySQL、FastAPI 和 Vue 三个 Compose 服务可同时运行。
 
 以下能力尚未完成，不应在简历中描述为已实现：
 
-- 使用新 API Key 完成 DeepSeek 真实联网调用验证；
-- SQL 生成失败后的自动纠错和有限重试；
 - LangGraph Checkpointer 会话持久化；
 - 文档解析、Embedding、向量库和 Reranker；
 - SSE 流式输出；
 - 制度文档和 50～100 条综合评测集；
-- SSE 流式响应和完整浏览器端到端测试。
+- 将当前 5 条 SQL 冒烟题扩展到 30 条，并建立 50～100 条综合评测集。
 
 ## 架构
 
@@ -98,6 +99,7 @@ LLM_PROVIDER=deepseek_anthropic
 LLM_MODEL=deepseek-v4-pro
 LLM_BASE_URL=https://api.deepseek.com/anthropic
 LLM_API_KEY=请在本机填写新生成的密钥
+DATA_AS_OF_DATE=2026-06-30
 ```
 
 如果 Key 曾经出现在聊天、截图、日志或 Git 历史中，必须先撤销后重新生成，不能继续使用。
@@ -129,6 +131,16 @@ $env:RUN_DB_TESTS="1"
 python -m pytest tests/integration/test_database.py
 ```
 
+真实模型验证与首批 SQL 评测：
+
+```powershell
+python scripts/verify_deepseek.py
+python scripts/evaluate_sql_smoke.py
+python scripts/evaluate_sql_smoke.py --reuse-generated
+```
+
+最后一条命令只复用上次生成的 SQL 并查询本地数据库，不会产生新的模型调用。评测报告写入已被 Git 忽略的 `data/runtime/sql_smoke_report.json`。
+
 ### 6. 启动 Streamlit 原型
 
 ```powershell
@@ -152,7 +164,7 @@ npm.cmd run dev
 安装 Docker Desktop 后，可执行：
 
 ```powershell
-docker compose up --build
+docker compose up -d --build
 ```
 
 - Vue 前端：<http://localhost:8080>
@@ -174,6 +186,8 @@ Content-Type: application/json
 ```
 
 配置新的 DeepSeek API Key 后，SQL 分支会读取 Schema、生成 SQL、执行安全校验并通过只读账号查询 MySQL。RAG 分支尚未实现，仍会返回明确提示，不会伪造答案。
+
+响应中的 `metrics` 包含 `attempt_count`、`prompt_tokens`、`completion_tokens`、`total_tokens`、`llm_latency_ms`、`sql_execution_ms` 和 `total_latency_ms`。
 
 ## 安全边界
 

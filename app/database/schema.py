@@ -5,8 +5,10 @@ from dataclasses import dataclass
 from sqlalchemy import inspect
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.interfaces import ReflectedColumn
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.core.errors import DatabaseQueryError
 from app.database.engine import get_business_engine
 
 
@@ -32,8 +34,11 @@ def _inspect_schema(sync_connection: Connection) -> dict[str, list[ReflectedColu
 
 async def load_schema_catalog(engine: AsyncEngine | None = None) -> SchemaCatalog:
     business_engine = engine or get_business_engine()
-    async with business_engine.connect() as connection:
-        raw_schema = await connection.run_sync(_inspect_schema)
+    try:
+        async with business_engine.connect() as connection:
+            raw_schema = await connection.run_sync(_inspect_schema)
+    except SQLAlchemyError as exc:
+        raise DatabaseQueryError("无法读取业务数据库 Schema") from exc
 
     column_map: dict[str, set[str]] = {}
     lines: list[str] = []
