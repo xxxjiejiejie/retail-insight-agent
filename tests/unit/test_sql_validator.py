@@ -49,6 +49,39 @@ def test_allows_cte_derived_column() -> None:
     assert result.is_safe
 
 
+def test_allows_subquery_derived_columns() -> None:
+    result = validate_read_only_sql(
+        "SELECT rev.store_id, rev.actual_revenue FROM "
+        "(SELECT o.store_id, SUM(o.amount) AS actual_revenue FROM orders o "
+        "GROUP BY o.store_id) rev",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"store_id", "amount"}},
+    )
+    assert result.is_safe
+
+
+def test_rejects_unknown_subquery_output_column() -> None:
+    result = validate_read_only_sql(
+        "SELECT rev.secret_value FROM "
+        "(SELECT o.store_id FROM orders o) rev",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"store_id"}},
+    )
+    assert not result.is_safe
+    assert any("rev.secret_value" in error for error in result.errors)
+
+
+def test_rejects_unknown_physical_column_inside_subquery() -> None:
+    result = validate_read_only_sql(
+        "SELECT rev.actual_revenue FROM "
+        "(SELECT SUM(o.secret_value) AS actual_revenue FROM orders o) rev",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"store_id", "amount"}},
+    )
+    assert not result.is_safe
+    assert any("o.secret_value" in error for error in result.errors)
+
+
 def test_rejects_sleep_function() -> None:
     result = validate_read_only_sql("SELECT SLEEP(10)")
     assert not result.is_safe

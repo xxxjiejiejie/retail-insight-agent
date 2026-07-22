@@ -36,10 +36,13 @@ export interface ChatMetrics {
   sql_execution_ms?: number
   total_latency_ms?: number
   sql_branch_ms?: number
+  rag_branch_ms?: number
+  hybrid_branch_ms?: number
   retrieval_ms?: number
   rerank_ms?: number
   retrieved_count?: number
   reranked_count?: number
+  evidence_count?: number
   citation_count?: number
 }
 
@@ -52,5 +55,6 @@ export interface ChatResponse {
   sql_result?: SQLResult | null
   chart_spec?: ChartSpec | null
   citations: Citation[]
+  errors: string[]
   metrics: ChatMetrics
 }

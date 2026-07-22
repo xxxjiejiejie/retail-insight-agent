@@ -1,9 +1,12 @@
+import asyncio
 from time import perf_counter
 
 from app.graph.router import classify_intent
 from app.graph.state import AgentState
 from app.rag.service import handle_rag_question
 from app.sql_agent.service import handle_sql_question
+
+HYBRID_SEPARATORS = ("并说明", "同时说明", "并依据", "并结合", "同时")
 
 
 def merge_hybrid_metrics(
@@ -35,6 +38,17 @@ def merge_hybrid_metrics(
 
 def route_node(state: AgentState) -> dict:
     return {"intent": classify_intent(state["user_query"])}
+
+
+def split_hybrid_query(query: str) -> tuple[str, str]:
+    for separator in HYBRID_SEPARATORS:
+        if separator in query:
+            sql_query, rag_query = query.split(separator, maxsplit=1)
+            cleaned_sql = sql_query.strip(" ，,。；;？?")
+            cleaned_rag = rag_query.strip(" ，,。；;？?")
+            if cleaned_sql and cleaned_rag:
+                return cleaned_sql, cleaned_rag
+    return query, query
 
 
 def clarify_node(state: AgentState) -> dict:
@@ -71,8 +85,11 @@ async def rag_node(state: AgentState) -> dict:
 
 async def hybrid_node(state: AgentState) -> dict:
     started = perf_counter()
-    sql_result = await handle_sql_question(state["user_query"])
-    rag_result = await handle_rag_question(state["user_query"])
+    sql_query, rag_query = split_hybrid_query(state["user_query"])
+    sql_result, rag_result = await asyncio.gather(
+        handle_sql_question(sql_query),
+        handle_rag_question(rag_query),
+    )
     return {
         "generated_sql": sql_result.get("generated_sql"),
         "sql_result": sql_result.get("sql_result"),

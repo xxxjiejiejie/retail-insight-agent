@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     reranker_model: str = "BAAI/bge-reranker-base"
     rag_retrieval_top_k: int = 12
     rag_rerank_top_k: int = 5
-    rag_min_relevance_score: float = 0.2
+    rag_min_relevance_score: float = 0.1
 
     max_sql_retries: int = 2
     max_result_rows: int = 500

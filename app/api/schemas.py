@@ -38,6 +38,7 @@ class ChatMetrics(BaseModel):
     rerank_ms: float | None = None
     retrieved_count: int | None = None
     reranked_count: int | None = None
+    evidence_count: int | None = None
     citation_count: int | None = None
 
 
@@ -50,6 +51,7 @@ class ChatResponse(BaseModel):
     sql_result: dict[str, Any] | None = None
     chart_spec: dict[str, Any] | None = None
     citations: list[Citation] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
     metrics: ChatMetrics = Field(default_factory=ChatMetrics)
 
 

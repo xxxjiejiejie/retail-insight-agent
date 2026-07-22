@@ -8,12 +8,18 @@ from app.api.routes.chat import router as chat_router
 from app.api.routes.health import router as health_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.database.engine import get_business_engine
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     configure_logging()
-    yield
+    try:
+        yield
+    finally:
+        if get_business_engine.cache_info().currsize:
+            await get_business_engine().dispose()
+            get_business_engine.cache_clear()
 
 
 settings = get_settings()

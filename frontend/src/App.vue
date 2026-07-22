@@ -25,6 +25,7 @@ const metricItems = computed(() => {
     { label: "重排耗时", value: metrics.rerank_ms, unit: "ms" },
     { label: "Token", value: metrics.total_tokens, unit: "" },
     { label: "生成次数", value: metrics.attempt_count, unit: "次" },
+    { label: "有效证据", value: metrics.evidence_count, unit: "条" },
     { label: "引用数", value: metrics.citation_count, unit: "条" },
   ].filter((item) => item.value !== undefined)
 })
@@ -78,6 +79,15 @@ async function submit(): Promise<void> {
           </div>
         </template>
         <p class="answer">{{ result.answer }}</p>
+        <el-alert
+          v-if="result.errors.length"
+          class="branch-warning"
+          title="部分能力未完成"
+          :description="result.errors.join('、')"
+          type="warning"
+          show-icon
+          :closable="false"
+        />
       </el-card>
 
       <el-card v-if="result.generated_sql" shadow="never">
@@ -129,6 +139,9 @@ async function submit(): Promise<void> {
             <span v-if="citation.section"> · {{ citation.section }}</span>
             <span v-if="citation.paragraph_id"> · {{ citation.paragraph_id }}</span>
             <span v-if="citation.page"> · 第 {{ citation.page }} 页</span>
+            <span v-if="citation.relevance_score !== null && citation.relevance_score !== undefined">
+              · 相关度 {{ (citation.relevance_score * 100).toFixed(1) }}%
+            </span>
             <p v-if="citation.excerpt" class="citation-excerpt">{{ citation.excerpt }}</p>
           </li>
         </ul>

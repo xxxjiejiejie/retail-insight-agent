@@ -54,6 +54,38 @@ class FakeSQLGenerator:
         )
 
 
+class DerivedTableSQLGenerator:
+    async def generate_text(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 1_200,
+    ) -> LLMTextResponse:
+        return LLMTextResponse(
+            content=(
+                '{"sql":"SELECT s.store_name, '
+                'ROUND(COALESCE(rev.actual_revenue, 0) / st.revenue_target * 100, 2) '
+                'AS completion_rate FROM stores s '
+                'JOIN sales_targets st ON s.store_id = st.store_id '
+                "AND st.target_month = '2026-06-01' "
+                'LEFT JOIN (SELECT o.store_id, '
+                'SUM(oi.quantity * oi.sale_price * (1 - oi.discount)) AS actual_revenue '
+                'FROM orders o JOIN order_items oi ON o.order_id = oi.order_id '
+                "WHERE o.status = 'completed' AND o.order_date >= '2026-06-01' "
+                "AND o.order_date < '2026-07-01' GROUP BY o.store_id) rev "
+                'ON s.store_id = rev.store_id '
+                'WHERE COALESCE(rev.actual_revenue, 0) < st.revenue_target '
+                'ORDER BY completion_rate ASC",'
+                '"explanation":"查询未完成目标的门店",'
+                '"chart":{"type":"bar","title":"未达标门店完成率",'
+                '"x_field":"store_name","y_field":"completion_rate"}}'
+            ),
+            prompt_tokens=200,
+            completion_tokens=100,
+        )
+
+
 @pytest.mark.asyncio
 async def test_mock_llm_to_real_database_chain() -> None:
     engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
@@ -66,5 +98,21 @@ async def test_mock_llm_to_real_database_chain() -> None:
         assert result["sql_result"]["row_count"] == 4
         assert result["chart_spec"]["x_field"] == "region"
         assert result["metrics"]["total_tokens"] == 170
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_derived_table_mock_llm_to_real_database_chain() -> None:
+    engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
+    try:
+        result = await handle_sql_question(
+            "2026年6月哪些门店没有完成销售目标？",
+            llm_client=DerivedTableSQLGenerator(),
+            engine=engine,
+        )
+        assert result["errors"] == []
+        assert result["sql_result"]["row_count"] > 0
+        assert result["metrics"]["attempt_count"] == 1
     finally:
         await engine.dispose()

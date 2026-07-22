@@ -144,7 +144,7 @@ async def test_refuses_when_retrieval_returns_no_evidence() -> None:
 
 @pytest.mark.asyncio
 async def test_refuses_when_reranker_score_is_too_low() -> None:
-    low_score = make_result(score=0.1)
+    low_score = make_result(score=0.05)
     result = await handle_rag_question(
         "公司是否提供住房补贴？",
         retriever=FakeRetriever([low_score]),

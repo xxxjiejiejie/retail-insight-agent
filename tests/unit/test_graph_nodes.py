@@ -28,3 +28,43 @@ def test_merge_hybrid_metrics_sums_tokens_and_preserves_rag_metrics() -> None:
     assert result["sql_execution_ms"] == 3.0
     assert result["retrieval_ms"] == 2.0
     assert result["total_latency_ms"] == 35.0
+
+
+def test_split_hybrid_query_separates_data_and_policy_questions() -> None:
+    sql_query, rag_query = nodes.split_hybrid_query(
+        "2026年6月哪些门店没有完成销售目标？并说明销售目标完成率在绩效中的权重"
+    )
+
+    assert sql_query == "2026年6月哪些门店没有完成销售目标"
+    assert rag_query == "销售目标完成率在绩效中的权重"
+
+
+@pytest.mark.asyncio
+async def test_hybrid_node_uses_separate_queries(monkeypatch: pytest.MonkeyPatch) -> None:
+    received: dict[str, str] = {}
+
+    async def fake_sql_handler(query: str) -> dict:
+        received["sql"] = query
+        return {"answer": "数据回答", "errors": [], "metrics": {"total_tokens": 10}}
+
+    async def fake_rag_handler(query: str) -> dict:
+        received["rag"] = query
+        return {"answer": "制度回答", "errors": [], "metrics": {"total_tokens": 20}}
+
+    monkeypatch.setattr(nodes, "handle_sql_question", fake_sql_handler)
+    monkeypatch.setattr(nodes, "handle_rag_question", fake_rag_handler)
+    result = await nodes.hybrid_node(
+        {
+            "user_query": (
+                "2026年6月哪些门店没有完成销售目标？"
+                "并说明销售目标完成率在绩效中的权重"
+            )
+        }
+    )
+
+    assert received == {
+        "sql": "2026年6月哪些门店没有完成销售目标",
+        "rag": "销售目标完成率在绩效中的权重",
+    }
+    assert result["answer"] == "数据回答\n\n制度回答"
+    assert result["metrics"]["total_tokens"] == 30

@@ -1,9 +1,20 @@
 # Scripts
 
-- `generate_seed_data.py`：使用固定随机种子生成可重复的零售模拟数据，并输出到 `data/seed/demo_data.sql`。
-- `verify_database.py`：使用应用的只读账号检查 Schema、数据量和一条真实聚合查询。
-- `verify_deepseek.py`：执行一次最小 DeepSeek 联网验证，不输出密钥或模型正文。
-- `evaluate_sql_smoke.py`：运行 5 条真实 Text-to-SQL 冒烟评测，并将报告写入 `data/runtime`；调整评测逻辑后可加 `--reuse-generated` 复用上次生成 SQL，仅重跑本地数据库比对，避免重复消耗 API 额度。
-- 后续将增加文档索引、评测运行和结果导出脚本。
+## 数据库与 SQL
 
-脚本必须支持重复运行，禁止在源码中写入真实密钥或本机绝对路径。
+- `generate_seed_data.py`：固定随机种子生成零售模拟数据。
+- `verify_database.py`：用只读账号检查 Schema、数据量和聚合查询。
+- `verify_deepseek.py`：执行一次最小 DeepSeek 请求，不输出 Key 或正文。
+- `verify_sql_references.py`：执行 30 条参考 SQL，不调用 LLM。
+- `evaluate_sql_smoke.py`：比较 DeepSeek SQL 与参考 SQL 的数据库执行结果；`--reuse-generated` 不产生新模型调用。
+
+## RAG
+
+- `index_policies.py`：解析 8 份 Markdown 制度并重建 Chroma 索引。
+- `verify_rag_stack.py [query]`：验证 CUDA、Top 12 召回和 Top 5 重排。
+- `verify_rag_answer.py [question]`：执行一条真实带引用 RAG 问答。
+- `evaluate_rag_retrieval.py`：运行 20 条本地召回/拒答评测，不调用 LLM。
+- `evaluate_rag.py`：运行 20 条真实 DeepSeek RAG 评测。
+- `verify_api_e2e.py`：通过 FastAPI ASGI 接口验证一条真实 Hybrid 请求。
+
+报告写入 Git 忽略的 `data/runtime`。脚本不得输出 Key，也不得把本机绝对路径写入可提交配置。

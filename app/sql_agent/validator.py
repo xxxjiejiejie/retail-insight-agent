@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 from sqlglot import exp, parse
 from sqlglot.errors import ParseError
+from sqlglot.optimizer.scope import Scope, traverse_scope
 
 FORBIDDEN_NODE_NAMES = {
     "alter",
@@ -92,29 +93,34 @@ def validate_read_only_sql(
             errors.append(f"访问了未授权的数据表：{', '.join(disallowed)}")
 
     if allowed_columns is not None:
-        select_aliases = {alias.alias for alias in statement.find_all(exp.Alias) if alias.alias}
-        aliases = {
-            (table.alias or table.name): table.name
-            for table in statement.find_all(exp.Table)
-            if table.name and table.name not in cte_names
-        }
-        referenced_column_pool = set().union(
-            *(allowed_columns.get(table_name, set()) for table_name in tables)
-        )
-        for column in statement.find_all(exp.Column):
-            column_name = column.name
-            if not column_name or column_name == "*":
-                continue
-            if not column.table and column_name in select_aliases:
-                continue
-            if column.table:
-                if column.table in cte_names:
+        for scope in traverse_scope(statement):
+            source_columns: dict[str, set[str]] = {}
+            for source_alias, source in scope.sources.items():
+                if isinstance(source, exp.Table):
+                    source_columns[source_alias] = allowed_columns.get(source.name, set())
+                elif isinstance(source, Scope):
+                    selected_expressions = source.expression.args.get("expressions") or []
+                    source_columns[source_alias] = {
+                        selected.alias_or_name
+                        for selected in selected_expressions
+                        if isinstance(selected, exp.Expr) and selected.alias_or_name
+                    }
+
+            unqualified_column_pool = set().union(*source_columns.values())
+            for column in scope.columns:
+                column_name = column.name
+                if not column_name or column_name == "*":
                     continue
-                real_table = aliases.get(column.table)
-                if real_table is None or column_name not in allowed_columns.get(real_table, set()):
-                    errors.append(f"访问了未授权的字段：{column.table}.{column_name}")
-            elif column_name not in referenced_column_pool and not cte_names:
-                errors.append(f"访问了未授权的字段：{column_name}")
+                if column.table:
+                    permitted = source_columns.get(column.table)
+                    if permitted is None or column_name not in permitted:
+                        error = f"访问了未授权的字段：{column.table}.{column_name}"
+                        if error not in errors:
+                            errors.append(error)
+                elif column_name not in unqualified_column_pool:
+                    error = f"访问了未授权的字段：{column_name}"
+                    if error not in errors:
+                        errors.append(error)
 
     has_query = statement.find(exp.Select) is not None or isinstance(statement, exp.Select)
     if not has_query:

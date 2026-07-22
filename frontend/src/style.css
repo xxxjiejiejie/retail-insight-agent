@@ -75,6 +75,10 @@ body {
   white-space: pre-wrap;
 }
 
+.branch-warning {
+  margin-top: 14px;
+}
+
 .code-block {
   overflow-x: auto;
   margin: 0;

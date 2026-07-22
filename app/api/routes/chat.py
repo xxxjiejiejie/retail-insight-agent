@@ -31,5 +31,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
         sql_result=result.get("sql_result"),
         chart_spec=result.get("chart_spec"),
         citations=result.get("citations", []),
+        errors=result.get("errors", []),
         metrics=result.get("metrics", {}),
     )

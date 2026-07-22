@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
-
-import torch
+import importlib
+from typing import Any
 
 from app.rag.reranker import BGEReranker
 from app.rag.vector_store import ChromaPolicyRetriever
 
 
-async def main() -> None:
-    query = "会员积分过期后能否恢复？"
+async def main(query: str) -> None:
+    torch: Any = importlib.import_module("torch")
     retriever = ChromaPolicyRetriever.from_settings()
     candidates = await retriever.retrieve(query, top_k=12)
     reranker = BGEReranker.from_settings()
@@ -29,4 +30,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query", nargs="?", default="会员积分过期后能否恢复？")
+    args = parser.parse_args()
+    asyncio.run(main(args.query))
