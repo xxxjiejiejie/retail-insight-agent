@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-当前为 **v0.6 综合评测与基础多轮上下文版**，已经实现：
+当前为 **v0.7 求职展示工作台版**，已经实现：
 
 - FastAPI `POST /api/v1/chat` 与 LangGraph 条件路由；
 - DeepSeek V4 Pro Anthropic 兼容客户端；
@@ -16,7 +16,9 @@
 - `BAAI/bge-reranker-base` Top 5 重排、0.1 证据阈值及低相关度拒答；
 - DeepSeek 基于证据生成答案，只返回答案中实际使用的 `[数字]` 引用；
 - Hybrid 问题拆分为数据与制度子问题并行执行；
-- Vue 3 + TypeScript + Element Plus + ECharts 页面，展示 SQL、表格、图表、引用、错误状态、延迟和 Token；
+- Vue 3 + TypeScript + Element Plus + ECharts 展示型分析工作台，包含深色导航、示例问题、SSE 进度、结果分区和响应式布局；
+- 分析结果按“结论、数据与图表、制度依据、运行轨迹”组织，支持 CSV 导出、SQL 复制、会话快速复用以及引用位置与相关度展示；
+- Element Plus 按需注册、ECharts 模块化注册与异步加载；首屏主 JS 从 2197.88KB 降至 384.28KB，CSS 从 359.49KB 降至 89.27KB；
 - CPU 版 FastAPI、Vue 与 MySQL 的完整 Docker Compose 部署；BGE 模型从主机缓存只读挂载并离线加载；
 - LangGraph `AsyncSqliteSaver` Checkpointer、最近 20 轮轻量会话记录、查询与清空接口；
 - `POST /api/v1/chat/stream` SSE 节点进度流，含 10 秒心跳、最终结果与安全错误事件；
@@ -36,6 +38,7 @@
 - 20/20 条真实 DeepSeek RAG 评测通过，其中 17 条各返回正确制度引用，3 条库外问题零引用拒答；
 - 17 条有答案 RAG 题共使用 11025 Token，平均检索 59.06ms、重排 300.60ms、LLM 3111.78ms；
 - 5/5 条代表性真实 DeepSeek Hybrid 问题分别通过数据库结果与制度引用双重校验；最终成功样本共使用 6123 Token，连同一次题意歧义的失败样本实际共消耗 7823 Token。
+- Docker 页面真实验收通过：SQL 问题展示 12 行数据、ECharts 图表与可审计 SQL；RAG 问题展示制度版本、章节、段落、原文与 99.6% 相关度；390px 视口无页面级横向溢出。
 
 评测集较小且全部为原创模拟场景，这些数字不能等同于生产环境准确率。
 

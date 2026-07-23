@@ -3,6 +3,15 @@ import vue from "@vitejs/plugin-vue"
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("echarts") || id.includes("zrender")) return "charts"
+        },
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,
@@ -14,4 +23,3 @@ export default defineConfig({
     },
   },
 })
-
