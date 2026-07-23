@@ -1,4 +1,4 @@
-from scripts.evaluate_sql_smoke import result_values_match
+from app.evaluation.metrics import result_values_match
 
 
 def test_result_comparison_allows_extra_presentation_columns() -> None:

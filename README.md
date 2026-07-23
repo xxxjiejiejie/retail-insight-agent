@@ -24,7 +24,7 @@
 - 基础上下文追问解析：将“那华东呢”“换成五月”“这个制度的申诉期限呢”等短追问与最近一次分析问题组合，不增加额外 LLM 调用；
 - 统一 100 项本地评测：30 条 SQL 参考执行、20 条 RAG 召回/拒答、25 条路由、10 条 Hybrid 拆分和 15 条 SQL 安全边界；
 - SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
-- Python 3.12、pytest、Ruff、MyPy 和可重复评测脚本。
+- Python 3.12、77 个 pytest 用例（其中 3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
 
 当前真实评测结果：
 
@@ -34,14 +34,15 @@
 - 17 条有答案题中纯向量与混合召回均为 17/17，当前小型题集尚未体现召回增益；
 - 100/100 项完整本地综合评测通过，两次运行约 23～28 秒，付费 LLM 调用为 0；
 - 20/20 条真实 DeepSeek RAG 评测通过，其中 17 条各返回正确制度引用，3 条库外问题零引用拒答；
-- 17 条有答案 RAG 题共使用 11025 Token，平均检索 59.06ms、重排 300.60ms、LLM 3111.78ms。
+- 17 条有答案 RAG 题共使用 11025 Token，平均检索 59.06ms、重排 300.60ms、LLM 3111.78ms；
+- 5/5 条代表性真实 DeepSeek Hybrid 问题分别通过数据库结果与制度引用双重校验；最终成功样本共使用 6123 Token，连同一次题意歧义的失败样本实际共消耗 7823 Token。
 
 评测集较小且全部为原创模拟场景，这些数字不能等同于生产环境准确率。
 
 尚未完成：
 
 - 扫描版 PDF 的 OCR；
-- 真实 DeepSeek 端到端评测仍只有 SQL 5 条、RAG 20 条；100 项综合评测主要用于本地规则、安全、参考 SQL 和检索回归；
+- 真实 DeepSeek 端到端评测仍只有 SQL 5 条、RAG 20 条、Hybrid 5 条；100 项综合评测主要用于本地规则、安全、参考 SQL 和检索回归；
 - GPU RAG API 镜像。当前 Compose 使用约 494MB 的 CPU API 镜像保证可移植部署；需要更快的 RAG 推理时，仍使用主机 Python + RTX 4060。
 
 ## 架构
@@ -201,7 +202,7 @@ docker compose up -d --force-recreate api frontend
 docker compose ps
 ```
 
-Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 <http://localhost:8080>；API 为 <http://localhost:8000>。v0.5 CPU API 镜像实测约 494MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。
+Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 <http://localhost:8080>；API 为 <http://localhost:8000>。v0.6 CPU API 镜像实测约 494MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。当前 Docker 依赖分层的新缓存首次构建约 317.3 秒，紧接着的零变更构建全部命中缓存，约 2.7 秒完成；该数据仅代表同机热缓存场景。
 
 `data/runtime` 挂载到容器内同名目录，SQLite 会话数据库因此能跨 API 容器重启保留。会话只保留最近 20 轮轻量记录；当前路由和回答仍以本轮问题为主，尚未把历史摘要注入模型完成指代消解。
 
@@ -233,6 +234,7 @@ python scripts/verify_deepseek.py
 python scripts/evaluate_sql_smoke.py
 python scripts/verify_rag_answer.py
 python scripts/evaluate_rag.py
+python scripts/evaluate_hybrid_live.py
 python scripts/verify_api_e2e.py
 python scripts/verify_session_stream.py --reset
 ```

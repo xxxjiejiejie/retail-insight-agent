@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from app.rag.loader import load_policy_documents
+from scripts.evaluate_hybrid_live import DEFAULT_CASE_IDS, REPORT_PATH, report_path_for
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -61,3 +62,24 @@ def test_comprehensive_evaluation_defines_100_checks() -> None:
     assert len(hybrid_cases) == 10
     assert len(safety_payload["cases"]) == 15
     assert len(all_ids) == 100
+
+
+def test_five_hybrid_cases_have_valid_sql_references() -> None:
+    hybrid_cases = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "hybrid_cases.json").read_text(encoding="utf-8")
+    )
+    sql_cases = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "sql_smoke_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    known_sql_ids = {case["id"] for case in sql_cases}
+    reference_backed = [case for case in hybrid_cases if case.get("reference_sql_case_id")]
+
+    assert len(reference_backed) == 5
+    assert all(case["reference_sql_case_id"] in known_sql_ids for case in reference_backed)
+
+
+def test_hybrid_focused_rerun_uses_separate_report() -> None:
+    assert report_path_for(DEFAULT_CASE_IDS) == REPORT_PATH
+    assert report_path_for({"HYBRID-003"}).name == "hybrid_live_hybrid_003_report.json"

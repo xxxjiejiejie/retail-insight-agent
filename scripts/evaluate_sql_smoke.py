@@ -5,15 +5,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from collections import Counter
 from dataclasses import asdict
-from datetime import date, datetime
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from app.database.engine import get_business_engine
 from app.database.schema import load_schema_catalog
+from app.evaluation.metrics import result_values_match
 from app.sql_agent.executor import execute_read_only_sql
 from app.sql_agent.service import handle_sql_question
 
@@ -36,41 +34,6 @@ def parse_args() -> argparse.Namespace:
         help="Reuse SQL from the prior report and make no LLM requests.",
     )
     return parser.parse_args()
-
-
-def normalize_value(value: object) -> str:
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, (int, float, Decimal)):
-        decimal_value = Decimal(str(value)).normalize()
-        return format(decimal_value, "f")
-    if isinstance(value, (date, datetime)):
-        return value.isoformat()
-    return str(value)
-
-
-def result_values_match(
-    generated_rows: list[dict[str, Any]],
-    reference_rows: list[dict[str, Any]],
-) -> bool:
-    """Compare values, allowing harmless extra presentation columns."""
-    if len(generated_rows) != len(reference_rows):
-        return False
-    remaining = [
-        Counter(normalize_value(value) for value in row.values()) for row in generated_rows
-    ]
-    for reference_row in reference_rows:
-        expected = Counter(normalize_value(value) for value in reference_row.values())
-        match_index = next(
-            (index for index, actual in enumerate(remaining) if expected <= actual),
-            None,
-        )
-        if match_index is None:
-            return False
-        remaining.pop(match_index)
-    return True
 
 
 async def evaluate(
