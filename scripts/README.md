@@ -10,10 +10,10 @@
 
 ## RAG
 
-- `index_policies.py`：解析 8 份 Markdown 制度并重建 Chroma 索引。
-- `verify_rag_stack.py [query]`：验证 CUDA、Top 12 召回和 Top 5 重排。
+- `index_policies.py`：解析 Markdown/PDF/DOCX 制度，按文件哈希增量更新 Chroma 与 BM25 语料；`--full-rebuild` 可强制全量重建。
+- `verify_rag_stack.py [query]`：验证 CUDA、BM25 + 向量融合 Top 12 召回和 Top 5 重排。
 - `verify_rag_answer.py [question]`：执行一条真实带引用 RAG 问答。
-- `evaluate_rag_retrieval.py`：运行 20 条本地召回/拒答评测，不调用 LLM。
+- `evaluate_rag_retrieval.py`：运行 20 条本地召回/拒答评测，并比较纯向量与融合召回，不调用 LLM。
 - `evaluate_rag.py`：运行 20 条真实 DeepSeek RAG 评测。
 - `verify_api_e2e.py`：通过 FastAPI ASGI 接口验证一条真实 Hybrid 请求。
 

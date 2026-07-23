@@ -40,6 +40,8 @@ dev = [
 rag = [
   "chromadb>=1.0,<2.0",
   "sentence-transformers>=5.0,<6.0",
+  "pypdf>=6.0,<7.0",
+  "python-docx>=1.2,<2.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -73,5 +75,9 @@ module = [
   "sentence_transformers.*",
   "torch",
   "torch.*",
+  "docx",
+  "docx.*",
+  "pypdf",
+  "pypdf.*",
 ]
 follow_imports = "skip"

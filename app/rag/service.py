@@ -19,7 +19,7 @@ def _citation_payload(result: RetrievedChunk) -> dict[str, Any]:
     return {
         "source": chunk.title,
         "section": chunk.section,
-        "page": None,
+        "page": chunk.page,
         "excerpt": chunk.content[:300],
         "document_id": chunk.document_id,
         "version": chunk.version,

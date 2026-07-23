@@ -33,11 +33,15 @@ class Settings(BaseSettings):
 
     vector_store: str = "chroma"
     vector_store_path: str = "./data/vector_store"
+    lexical_corpus_path: str = "./data/runtime/bm25_corpus.json"
     model_cache_path: str = ""
     model_local_files_only: bool = False
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     reranker_model: str = "BAAI/bge-reranker-base"
     rag_retrieval_top_k: int = 12
+    rag_vector_top_k: int = 20
+    rag_bm25_top_k: int = 20
+    rag_rrf_k: int = 60
     rag_rerank_top_k: int = 5
     rag_min_relevance_score: float = 0.1
 

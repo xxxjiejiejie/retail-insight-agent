@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
-from app.rag.models import DocumentChunk, PolicyDocument
+from app.rag.models import DocumentChunk, DocumentSection, PolicyDocument
 
 REQUIRED_METADATA = {"document_id", "title", "version", "effective_date"}
 HEADING_PATTERN = re.compile(r"^(#{2,4})\s+(.+?)\s*$")
 SENTENCE_ENDINGS = "。！？；\n"
+SUPPORTED_SUFFIXES = {".md", ".pdf", ".docx"}
 
 
 def _parse_frontmatter(text: str, source: Path) -> tuple[dict[str, str], str]:
@@ -32,7 +36,7 @@ def _parse_frontmatter(text: str, source: Path) -> tuple[dict[str, str], str]:
     return metadata, body.strip()
 
 
-def load_policy_document(path: Path) -> PolicyDocument:
+def _load_markdown_document(path: Path) -> PolicyDocument:
     metadata, body = _parse_frontmatter(path.read_text(encoding="utf-8"), path)
     return PolicyDocument(
         document_id=metadata["document_id"],
@@ -44,9 +48,128 @@ def load_policy_document(path: Path) -> PolicyDocument:
     )
 
 
+def _load_sidecar_metadata(path: Path) -> dict[str, str]:
+    sidecar = path.with_suffix(f"{path.suffix}.metadata.json")
+    if not sidecar.exists():
+        raise ValueError(f"{path.name} 缺少元数据侧车文件：{sidecar.name}")
+    try:
+        raw: Any = json.loads(sidecar.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"元数据侧车文件不是有效 JSON：{sidecar.name}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"元数据侧车文件必须是 JSON 对象：{sidecar.name}")
+    metadata = {str(key): str(value).strip() for key, value in raw.items()}
+    missing = sorted(key for key in REQUIRED_METADATA if not metadata.get(key))
+    if missing:
+        raise ValueError(f"元数据侧车文件缺少字段 {', '.join(missing)}：{sidecar.name}")
+    return metadata
+
+
+def _load_pdf_document(path: Path) -> PolicyDocument:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise RuntimeError("读取 PDF 需要安装 pypdf，请安装项目的 rag 可选依赖") from exc
+
+    metadata = _load_sidecar_metadata(path)
+    reader = PdfReader(str(path))
+    sections: list[DocumentSection] = []
+    for page_number, page in enumerate(reader.pages, 1):
+        text = (page.extract_text() or "").strip()
+        if text:
+            sections.append(
+                DocumentSection(title=f"第 {page_number} 页", content=text, page=page_number)
+            )
+    if not sections:
+        raise ValueError(f"{path.name} 未提取到文本，可能是扫描版 PDF，需要先进行 OCR")
+    return PolicyDocument(
+        document_id=metadata["document_id"],
+        title=metadata["title"],
+        version=metadata["version"],
+        effective_date=metadata["effective_date"],
+        source=path.name,
+        content="\n\n".join(section.content for section in sections),
+        sections=tuple(sections),
+    )
+
+
+def _load_docx_document(path: Path) -> PolicyDocument:
+    try:
+        from docx import Document
+        from docx.table import Table
+        from docx.text.paragraph import Paragraph
+    except ImportError as exc:
+        raise RuntimeError("读取 DOCX 需要安装 python-docx，请安装项目的 rag 可选依赖") from exc
+
+    metadata = _load_sidecar_metadata(path)
+    document = Document(str(path))
+    sections: list[DocumentSection] = []
+    current_title = "总则"
+    current_lines: list[str] = []
+
+    def flush_section() -> None:
+        content = "\n".join(line for line in current_lines if line).strip()
+        if content:
+            sections.append(DocumentSection(title=current_title, content=content))
+
+    for block in document.iter_inner_content():
+        if isinstance(block, Paragraph):
+            text = block.text.strip()
+            if not text:
+                continue
+            if block.style and block.style.name.lower().startswith("heading"):
+                flush_section()
+                current_title = text
+                current_lines = []
+            else:
+                current_lines.append(text)
+        elif isinstance(block, Table):
+            for row in block.rows:
+                values = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+                if any(values):
+                    current_lines.append(" | ".join(values))
+    flush_section()
+    if not sections:
+        raise ValueError(f"{path.name} 未提取到可检索文本")
+    return PolicyDocument(
+        document_id=metadata["document_id"],
+        title=metadata["title"],
+        version=metadata["version"],
+        effective_date=metadata["effective_date"],
+        source=path.name,
+        content="\n\n".join(section.content for section in sections),
+        sections=tuple(sections),
+    )
+
+
+def load_policy_document(path: Path) -> PolicyDocument:
+    suffix = path.suffix.lower()
+    if suffix == ".md":
+        return _load_markdown_document(path)
+    if suffix == ".pdf":
+        return _load_pdf_document(path)
+    if suffix == ".docx":
+        return _load_docx_document(path)
+    raise ValueError(f"不支持的制度文档格式：{path.suffix or path.name}")
+
+
+def discover_policy_paths(directory: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in directory.rglob("*")
+        if path.is_file()
+        and path.suffix.lower() in SUPPORTED_SUFFIXES
+        and path.name.lower() != "readme.md"
+        and not path.name.startswith("~$")
+    )
+
+
 def load_policy_documents(directory: Path) -> list[PolicyDocument]:
-    paths = sorted(path for path in directory.glob("*.md") if path.name.lower() != "readme.md")
-    documents = [load_policy_document(path) for path in paths]
+    paths = discover_policy_paths(directory)
+    documents = [
+        replace(load_policy_document(path), source=path.relative_to(directory).as_posix())
+        for path in paths
+    ]
     identifiers = [document.document_id for document in documents]
     if len(identifiers) != len(set(identifiers)):
         raise ValueError("制度文档 document_id 不能重复")
@@ -112,7 +235,12 @@ def chunk_policy_document(
         raise ValueError("overlap_chars 必须大于等于 0 且小于 max_chars 的一半")
 
     chunks: list[DocumentChunk] = []
-    for section_index, (section, section_text) in enumerate(_section_blocks(document.content), 1):
+    source_sections = (
+        [(section.title, section.content, section.page) for section in document.sections]
+        if document.sections
+        else [(section, text, None) for section, text in _section_blocks(document.content)]
+    )
+    for section_index, (section, section_text, page) in enumerate(source_sections, 1):
         for part_index, part in enumerate(
             _split_text(section_text, max_chars, overlap_chars),
             1,
@@ -131,6 +259,7 @@ def chunk_policy_document(
                     section=section,
                     paragraph_id=paragraph_id,
                     content=part,
+                    page=page,
                 )
             )
     return chunks

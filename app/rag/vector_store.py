@@ -73,10 +73,14 @@ class ChromaPolicyRetriever:
                 batch = chunks[offset : offset + batch_size]
                 texts = [chunk.content for chunk in batch]
                 metadatas = [
-                    {key: str(value) for key, value in asdict(chunk).items() if key != "content"}
+                    {
+                        key: str(value)
+                        for key, value in asdict(chunk).items()
+                        if key != "content" and value is not None
+                    }
                     for chunk in batch
                 ]
-                self._collection.add(
+                self._collection.upsert(
                     ids=[chunk.chunk_id for chunk in batch],
                     documents=texts,
                     metadatas=metadatas,
@@ -88,6 +92,49 @@ class ChromaPolicyRetriever:
             return await asyncio.to_thread(rebuild)
         except (OSError, RuntimeError, ValueError) as exc:
             raise IntegrationError("制度向量索引构建失败") from exc
+
+    async def upsert_chunks(self, chunks: list[DocumentChunk]) -> int:
+        if not chunks:
+            return 0
+
+        def upsert() -> int:
+            batch_size = 64
+            for offset in range(0, len(chunks), batch_size):
+                batch = chunks[offset : offset + batch_size]
+                texts = [chunk.content for chunk in batch]
+                metadatas = [
+                    {
+                        key: str(value)
+                        for key, value in asdict(chunk).items()
+                        if key != "content" and value is not None
+                    }
+                    for chunk in batch
+                ]
+                self._collection.upsert(
+                    ids=[chunk.chunk_id for chunk in batch],
+                    documents=texts,
+                    metadatas=metadatas,
+                    embeddings=self._encode_documents(texts),
+                )
+            return len(chunks)
+
+        try:
+            return await asyncio.to_thread(upsert)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise IntegrationError("制度向量索引增量更新失败") from exc
+
+    async def delete_chunks(self, chunk_ids: list[str]) -> int:
+        if not chunk_ids:
+            return 0
+
+        def delete() -> int:
+            self._collection.delete(ids=chunk_ids)
+            return len(chunk_ids)
+
+        try:
+            return await asyncio.to_thread(delete)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise IntegrationError("制度向量索引增量删除失败") from exc
 
     async def retrieve(self, query: str, *, top_k: int) -> list[RetrievedChunk]:
         def query_index() -> list[RetrievedChunk]:
@@ -120,6 +167,7 @@ class ChromaPolicyRetriever:
                     section=str(metadata["section"]),
                     paragraph_id=str(metadata["paragraph_id"]),
                     content=content,
+                    page=(int(metadata["page"]) if metadata.get("page") else None),
                 )
                 results.append(RetrievedChunk(chunk=chunk, score=1.0 - float(distance)))
             return results

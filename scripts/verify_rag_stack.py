@@ -8,12 +8,12 @@ import importlib
 from typing import Any
 
 from app.rag.reranker import BGEReranker
-from app.rag.vector_store import ChromaPolicyRetriever
+from app.rag.runtime import get_policy_retriever
 
 
 async def main(query: str) -> None:
     torch: Any = importlib.import_module("torch")
-    retriever = ChromaPolicyRetriever.from_settings()
+    retriever = get_policy_retriever()
     candidates = await retriever.retrieve(query, top_k=12)
     reranker = BGEReranker.from_settings()
     reranked = await reranker.rerank(query, candidates, top_k=5)

@@ -1,11 +1,11 @@
-# v0.4 架构说明
+# v0.5 架构说明
 
 ## 请求生命周期
 
 1. Vue 将持久化在浏览器本地的 `session_id` 与 `query` 发送到 `POST /api/v1/chat/stream`。
 2. FastAPI 创建 `AgentState`，LangGraph 的规则路由判断 SQL、RAG、Hybrid、Clarify 或 General。
 3. SQL 分支读取真实 Schema，由 DeepSeek 返回 JSON SQL 计划，经 SQLGlot 和白名单校验后用只读账号执行。
-4. RAG 分支从 Chroma 召回 12 个制度块，BGE Reranker 保留 5 个，再按相关度阈值筛选证据。
+4. RAG 分支并行执行 Chroma 向量召回与 BM25 关键词召回，经 RRF 融合出 12 个制度块；BGE Reranker 保留 5 个，再按相关度阈值筛选证据。
 5. DeepSeek 只能依据筛选后的上下文回答；服务解析答案中的 `[数字]`，仅返回实际使用的引用。
 6. Hybrid 分支先按“并说明/同时说明”等连接词拆分数据和制度子问题，再并行运行 SQL 与 RAG，最后合并答案、错误和指标。
 7. LangGraph 在公共终止节点追加一条轻量 turn，`AsyncSqliteSaver` 将图状态写入 `data/runtime/sessions.db`。
@@ -49,21 +49,25 @@ SSE 使用 POST + Fetch 流式读取，事件为 `start`、`node`、`heartbeat`�
 ### 索引
 
 ```text
-原创 Markdown 制度
-→ frontmatter 元数据
-→ 标题/段落感知分块
+Markdown / 文本型 PDF / DOCX
+→ frontmatter 或 JSON 元数据侧车
+→ 标题/页码/段落感知分块
 → 稳定 chunk_id 与 paragraph_id
-→ BGE Small 中文向量
-→ Chroma 持久化索引
+→ 源文件与侧车 SHA-256 清单
+→ 仅删除/写入发生变化的 chunk
+→ Chroma 向量索引 + BM25 语料
 ```
 
-当前 8 份制度产生 24 个块。模型与 Chroma 均为本地运行；DeepSeek只负责基于证据生成答案。
+当前 8 份制度产生 24 个块。PDF 页号进入 chunk 和引用；DOCX 的 Heading 样式形成章节，表格转为文本行。扫描版 PDF 不静默降级，提取不到文字时要求先做 OCR。模型、Chroma 和 BM25 均为本地运行；DeepSeek 只负责基于证据生成答案。
+
+增量索引清单与 BM25 语料位于 `data/runtime`，不进入 Git。正常索引比较源文件及侧车文件的 SHA-256：新建/修改文档只重新计算对应向量，删除文档会清理原 chunk。零变更运行不会加载 Embedding 模型；`--full-rebuild` 仅用于排障和索引格式迁移。
 
 ### 查询
 
 ```text
 用户问题
-→ Chroma Top 12
+→ Chroma 向量 Top 20 + BM25 Top 20
+→ RRF(k=60) 去重融合 Top 12
 → BGE Reranker Top 5
 → relevance_score >= 0.1
 → 无证据则拒答
@@ -72,6 +76,8 @@ SSE 使用 POST + Fetch 流式读取，事件为 `start`、`node`、`heartbeat`�
 ```
 
 阈值 0.1 来自当前固定评测：跨章节相关片段最低约 0.1096，三条无答案问题最高约 0.069。扩展评测集或更换文档后必须重新校准，不能把该值视为通用常数。
+
+BM25 使用中文单字、相邻双字词和英文/数字词元，不依赖额外分词模型。RRF 只利用两路排名而非直接混合不可比的余弦分数和 BM25 分数。当前 17 条有答案题中，向量与融合召回均为 17/17；这只能说明没有回归，不能证明融合检索已经提高指标。
 
 ## 路由
 
@@ -109,8 +115,7 @@ LLM 不生成图片，也不执行绘图代码。后端只允许：
 ## 当前技术债
 
 - 已保存会话历史，但尚未将历史摘要注入路由/提示词实现代词与省略式追问；
-- 文档仅支持 Markdown，尚未加入 PDF/DOCX；
-- 尚未实现 BM25 混合召回和增量索引；
+- PDF 当前仅支持文本型文件，扫描件尚未接入 OCR；
 - Hybrid 目前合并两个分支答案，尚未增加第三次统一总结调用；
 - 已提供 CPU RAG API 的完整 Compose 镜像，并从主机只读挂载模型缓存；GPU 推理仍通过主机 Python 环境运行，尚未提供 NVIDIA Container Toolkit 版镜像；
 - Vue 主包仍有约 732KB gzip 的分包优化空间；

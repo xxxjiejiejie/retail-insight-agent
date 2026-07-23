@@ -4,6 +4,13 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
+class DocumentSection:
+    title: str
+    content: str
+    page: int | None = None
+
+
+@dataclass(slots=True, frozen=True)
 class PolicyDocument:
     document_id: str
     title: str
@@ -11,6 +18,7 @@ class PolicyDocument:
     effective_date: str
     source: str
     content: str
+    sections: tuple[DocumentSection, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -24,6 +32,7 @@ class DocumentChunk:
     section: str
     paragraph_id: str
     content: str
+    page: int | None = None
 
 
 @dataclass(slots=True, frozen=True)
