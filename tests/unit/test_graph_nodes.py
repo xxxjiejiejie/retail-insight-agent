@@ -63,23 +63,40 @@ def test_split_hybrid_query_separates_data_and_policy_questions() -> None:
     assert rag_query == "销售目标完成率在绩效中的权重"
 
 
-def test_persist_turn_node_keeps_only_lightweight_history() -> None:
+def test_persist_turn_node_keeps_bounded_result_snapshot() -> None:
+    rows = [{"value": index} for index in range(105)]
     result = nodes.persist_turn_node(
         {
-            "user_query": "你好",
-            "intent": "general",
-            "answer": "你好，请问需要分析什么？",
-            "sql_result": {"rows": [{"large": "payload"}]},
+            "user_query": "查询销售额",
+            "intent": "sql",
+            "answer": "查询完成",
+            "clarification": None,
+            "sql_result": {
+                "columns": ["value"],
+                "rows": rows,
+                "row_count": 105,
+                "execution_ms": 3.2,
+                "executed_sql": "SELECT value FROM sales LIMIT 500",
+            },
+            "chart_spec": {
+                "type": "bar",
+                "title": "销售额",
+                "x_field": "name",
+                "y_field": "value",
+            },
             "citations": [],
             "errors": [],
-            "metrics": {"total_tokens": 0},
+            "metrics": {"total_tokens": 20},
         }
     )
 
     turn = result["turns"][0]
-    assert turn["query"] == "你好"
-    assert turn["intent"] == "general"
-    assert "sql_result" not in turn
+    assert turn["query"] == "查询销售额"
+    assert turn["intent"] == "sql"
+    assert len(turn["sql_result"]["rows"]) == 100
+    assert turn["sql_result"]["row_count"] == 105
+    assert turn["sql_result"]["history_truncated"] is True
+    assert turn["chart_spec"]["type"] == "bar"
 
 
 def test_session_history_keeps_latest_twenty_turns() -> None:

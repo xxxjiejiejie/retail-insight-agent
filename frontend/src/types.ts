@@ -25,6 +25,7 @@ export interface SQLResult {
   row_count: number
   execution_ms: number
   executed_sql: string
+  history_truncated?: boolean
 }
 
 export interface ChatMetrics {
@@ -70,7 +71,10 @@ export interface ChatTurn {
   context_used: boolean
   intent: Intent
   answer: string
+  clarification?: string | null
   generated_sql?: string | null
+  sql_result?: SQLResult | null
+  chart_spec?: ChartSpec | null
   citations: Citation[]
   errors: string[]
   metrics: ChatMetrics
@@ -84,4 +88,39 @@ export interface SessionHistoryResponse {
 export interface SessionDeleteResponse {
   session_id: string
   deleted: boolean
+}
+
+export interface SchemaColumn {
+  name: string
+  type: string
+  nullable: boolean
+}
+
+export interface SchemaTable {
+  name: string
+  columns: SchemaColumn[]
+}
+
+export interface SchemaMetadataResponse {
+  tables: SchemaTable[]
+}
+
+export interface PolicyMetadataItem {
+  document_id: string
+  title: string
+  version: string
+  effective_date: string
+  source: string
+  section_count: number
+  chunk_count: number
+}
+
+export interface PolicyMetadataResponse {
+  documents: PolicyMetadataItem[]
+}
+
+export interface HealthResponse {
+  status: string
+  app: string
+  environment: string
 }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import inspect
 from sqlalchemy.engine import Connection
@@ -13,9 +13,17 @@ from app.database.engine import get_business_engine
 
 
 @dataclass(slots=True, frozen=True)
+class SchemaColumn:
+    name: str
+    type: str
+    nullable: bool
+
+
+@dataclass(slots=True, frozen=True)
 class SchemaCatalog:
     columns: dict[str, set[str]]
     context: str
+    details: dict[str, list[SchemaColumn]] = field(default_factory=dict)
 
     @property
     def tables(self) -> set[str]:
@@ -41,13 +49,26 @@ async def load_schema_catalog(engine: AsyncEngine | None = None) -> SchemaCatalo
         raise DatabaseQueryError("无法读取业务数据库 Schema") from exc
 
     column_map: dict[str, set[str]] = {}
+    detail_map: dict[str, list[SchemaColumn]] = {}
     lines: list[str] = []
     for table_name, columns in raw_schema.items():
         column_map[table_name] = {str(column["name"]) for column in columns}
+        detail_map[table_name] = [
+            SchemaColumn(
+                name=str(column["name"]),
+                type=str(column["type"]),
+                nullable=bool(column.get("nullable", True)),
+            )
+            for column in columns
+        ]
         descriptions = [
             f"{column['name']} {column['type']}"
             + (" NOT NULL" if not column.get("nullable", True) else "")
             for column in columns
         ]
         lines.append(f"TABLE {table_name} ({', '.join(descriptions)})")
-    return SchemaCatalog(columns=column_map, context="\n".join(lines))
+    return SchemaCatalog(
+        columns=column_map,
+        context="\n".join(lines),
+        details=detail_map,
+    )

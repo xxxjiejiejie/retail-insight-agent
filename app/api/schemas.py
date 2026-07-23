@@ -72,7 +72,10 @@ class ChatTurn(BaseModel):
     context_used: bool = False
     intent: Intent
     answer: str
+    clarification: str | None = None
     generated_sql: str | None = None
+    sql_result: dict[str, Any] | None = None
+    chart_spec: dict[str, Any] | None = None
     citations: list[Citation] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     metrics: ChatMetrics = Field(default_factory=ChatMetrics)
@@ -92,3 +95,32 @@ class HealthResponse(BaseModel):
     status: str
     app: str
     environment: str
+
+
+class SchemaColumnResponse(BaseModel):
+    name: str
+    type: str
+    nullable: bool
+
+
+class SchemaTableResponse(BaseModel):
+    name: str
+    columns: list[SchemaColumnResponse]
+
+
+class SchemaMetadataResponse(BaseModel):
+    tables: list[SchemaTableResponse]
+
+
+class PolicyMetadataItem(BaseModel):
+    document_id: str
+    title: str
+    version: str
+    effective_date: str
+    source: str
+    section_count: int
+    chunk_count: int
+
+
+class PolicyMetadataResponse(BaseModel):
+    documents: list[PolicyMetadataItem]

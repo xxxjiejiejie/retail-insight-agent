@@ -30,8 +30,10 @@ class Settings(BaseSettings):
         "mysql+aiomysql://retail_readonly:readonly-local-dev@localhost:3307/retail_insight"
     )
     session_database_url: str = "sqlite+aiosqlite:///./data/runtime/sessions.db"
+    history_result_rows: int = Field(default=100, ge=1, le=500)
 
     vector_store: str = "chroma"
+    policy_documents_path: str = "./data/documents"
     vector_store_path: str = "./data/vector_store"
     lexical_corpus_path: str = "./data/runtime/bm25_corpus.json"
     model_cache_path: str = ""

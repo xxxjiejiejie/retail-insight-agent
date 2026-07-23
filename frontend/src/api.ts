@@ -2,8 +2,11 @@ import axios from "axios"
 
 import type {
   ChatResponse,
+  HealthResponse,
+  PolicyMetadataResponse,
   SessionDeleteResponse,
   SessionHistoryResponse,
+  SchemaMetadataResponse,
 } from "./types"
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api/v1"
@@ -88,5 +91,20 @@ export async function getSessionHistory(sessionId: string): Promise<SessionHisto
 
 export async function deleteSession(sessionId: string): Promise<SessionDeleteResponse> {
   const response = await api.delete<SessionDeleteResponse>(`/sessions/${sessionId}`)
+  return response.data
+}
+
+export async function getHealth(): Promise<HealthResponse> {
+  const response = await api.get<HealthResponse>("/health")
+  return response.data
+}
+
+export async function getSchemaMetadata(): Promise<SchemaMetadataResponse> {
+  const response = await api.get<SchemaMetadataResponse>("/metadata/schema")
+  return response.data
+}
+
+export async function getPolicyMetadata(): Promise<PolicyMetadataResponse> {
+  const response = await api.get<PolicyMetadataResponse>("/metadata/policies")
   return response.data
 }

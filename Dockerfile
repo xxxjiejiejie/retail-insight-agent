@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir "torch==${TORCH_VERSION}" --index-url "${TORCH_IN
     && pip install --no-cache-dir ".[rag]"
 COPY README.md ./README.md
 COPY app ./app
+COPY data/documents ./data/documents
 RUN pip install --no-cache-dir --no-deps .
 
 EXPOSE 8000

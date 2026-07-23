@@ -28,3 +28,9 @@
 - `evaluate_hybrid_live.py`：默认运行 5 条真实 DeepSeek Hybrid 抽样，同时比较 SQL 执行结果和制度引用；会产生付费模型调用。使用 `--case-id HYBRID-003` 聚焦重跑时写入独立报告，不覆盖默认五题基线。
 
 报告写入 Git 忽略的 `data/runtime`。脚本不得输出 Key，也不得把本机绝对路径写入可提交配置。
+
+## v0.8 前端联调
+
+- 真实模式启动后，页面会分别请求 `/api/v1/health`、`/api/v1/metadata/schema` 和 `/api/v1/metadata/policies`，用于展示 API、经营数据库和制度知识库状态。
+- 访问 `http://localhost:8080/?demo=1` 可进入无网络、无数据库、零 Token 的演示模式；演示历史只保留在当前页面。
+- 历史结果回放通过 `/api/v1/sessions/{session_id}` 恢复，不会重新调用模型或重新执行 SQL。历史 SQL 快照最多包含前 100 行。

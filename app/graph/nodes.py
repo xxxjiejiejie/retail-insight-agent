@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from time import perf_counter
 from uuid import uuid4
 
+from app.core.config import get_settings
 from app.graph.context import resolve_contextual_query
 from app.graph.router import classify_intent
 from app.graph.state import AgentState
@@ -131,7 +132,17 @@ def route_key(state: AgentState) -> str:
 
 
 def persist_turn_node(state: AgentState) -> dict:
-    """Append a compact, JSON-serializable turn to the checkpointed session."""
+    """Append a bounded, JSON-serializable result snapshot to the session."""
+
+    sql_result = state.get("sql_result")
+    if sql_result:
+        history_limit = get_settings().history_result_rows
+        rows = list(sql_result.get("rows", []))
+        sql_result = {
+            **sql_result,
+            "rows": rows[:history_limit],
+            "history_truncated": len(rows) > history_limit,
+        }
 
     turn = {
         "turn_id": str(uuid4()),
@@ -141,7 +152,10 @@ def persist_turn_node(state: AgentState) -> dict:
         "context_used": bool(state.get("context_used")),
         "intent": state["intent"],
         "answer": state.get("answer") or "当前分支没有返回答案。",
+        "clarification": state.get("clarification"),
         "generated_sql": state.get("generated_sql"),
+        "sql_result": sql_result,
+        "chart_spec": state.get("chart_spec"),
         "citations": state.get("citations", []),
         "errors": state.get("errors", []),
         "metrics": state.get("metrics", {}),

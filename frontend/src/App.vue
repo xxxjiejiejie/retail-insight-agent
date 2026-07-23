@@ -16,13 +16,34 @@ import {
 } from "@element-plus/icons-vue"
 import { computed, defineAsyncComponent, nextTick, onMounted, ref } from "vue"
 
-import { deleteSession, getSessionHistory, streamQuestion } from "./api"
-import type { ChatResponse, ChatTurn, Intent } from "./types"
+import {
+  deleteSession,
+  getHealth,
+  getPolicyMetadata,
+  getSchemaMetadata,
+  getSessionHistory,
+  streamQuestion,
+} from "./api"
+import {
+  demoPolicyMetadata,
+  demoResponses,
+  demoSchemaMetadata,
+  demoTurn,
+} from "./demoData"
+import type {
+  ChatResponse,
+  ChatTurn,
+  HealthResponse,
+  Intent,
+  PolicyMetadataItem,
+  SchemaMetadataResponse,
+} from "./types"
 
 const SESSION_STORAGE_KEY = "retail-insight-session-id"
 const ChartPanel = defineAsyncComponent(() => import("./components/ChartPanel.vue"))
 
 type ResultTab = "overview" | "data" | "evidence" | "trace"
+type ServiceState = "checking" | "online" | "offline" | "demo"
 
 const intentDetails: Record<Intent, { label: string; description: string }> = {
   sql: { label: "经营数据分析", description: "安全 Text-to-SQL" },
@@ -72,9 +93,27 @@ const loadingStatus = ref("")
 const error = ref("")
 const result = ref<ChatResponse | null>(null)
 const history = ref<ChatTurn[]>([])
+const demoHistory = ref<ChatTurn[]>([])
 const sessionId = ref(currentSessionId())
 const activeTab = ref<ResultTab>("overview")
 const copiedSql = ref(false)
+const selectedTurnId = ref<string | null>(null)
+const isDemoMode = ref(new URLSearchParams(window.location.search).get("demo") === "1")
+const drawerKind = ref<"policies" | "schema" | null>(null)
+const drawerLoading = ref(false)
+const drawerError = ref("")
+const policyMetadata = ref<PolicyMetadataItem[]>([])
+const schemaMetadata = ref<SchemaMetadataResponse | null>(null)
+const health = ref<HealthResponse | null>(null)
+const healthLoading = ref(true)
+const healthError = ref("")
+const schemaStatus = ref<ServiceState>(isDemoMode.value ? "demo" : "checking")
+const policyStatus = ref<ServiceState>(isDemoMode.value ? "demo" : "checking")
+
+if (isDemoMode.value) {
+  policyMetadata.value = [...demoPolicyMetadata]
+  schemaMetadata.value = demoSchemaMetadata
+}
 
 const canSend = computed(() => query.value.trim().length >= 2 && !loading.value)
 const sqlRows = computed(() => result.value?.sql_result?.rows ?? [])
@@ -82,8 +121,28 @@ const sqlColumns = computed(() => result.value?.sql_result?.columns ?? [])
 const currentIntent = computed(() =>
   intentDetails[result.value?.intent ?? "general"],
 )
-const recentHistory = computed(() => [...history.value].reverse().slice(0, 5))
+const displayedHistory = computed(() => (isDemoMode.value ? demoHistory.value : history.value))
+const recentHistory = computed(() => [...displayedHistory.value].reverse().slice(0, 5))
 const sessionShortId = computed(() => sessionId.value.slice(0, 8))
+const isHistoricalResult = computed(() => Boolean(selectedTurnId.value))
+const serviceItems = computed(() => {
+  const apiState: ServiceState = isDemoMode.value
+    ? "demo"
+    : healthLoading.value
+      ? "checking"
+      : health.value?.status === "ok"
+        ? "online"
+        : "offline"
+  return [
+    { label: "API 服务", state: apiState },
+    { label: "经营数据库", state: isDemoMode.value ? "demo" : schemaStatus.value },
+    { label: "制度知识库", state: isDemoMode.value ? "demo" : policyStatus.value },
+  ]
+})
+
+function serviceStateLabel(state: ServiceState): string {
+  return { checking: "检查中", online: "正常", offline: "异常", demo: "演示" }[state]
+}
 const resultTabs = computed(() => [
   { id: "overview" as const, label: "分析结论", count: null, disabled: false },
   {
@@ -199,12 +258,131 @@ function applyExample(exampleQuery: string): void {
 
 function reuseTurn(turn: ChatTurn): void {
   query.value = turn.query
+  selectedTurnId.value = turn.turn_id
+  result.value = {
+    session_id: isDemoMode.value ? "demo-session" : sessionId.value,
+    intent: turn.intent,
+    resolved_query: turn.resolved_query,
+    context_used: turn.context_used,
+    answer: turn.answer,
+    clarification: turn.clarification,
+    generated_sql: turn.generated_sql,
+    sql_result: turn.sql_result,
+    chart_spec: turn.chart_spec,
+    citations: turn.citations,
+    errors: turn.errors,
+    metrics: turn.metrics,
+  }
+  activeTab.value = "overview"
+  copiedSql.value = false
   window.scrollTo({ top: 0, behavior: "smooth" })
 }
 
 async function refreshHistory(): Promise<void> {
+  if (isDemoMode.value) return
   const response = await getSessionHistory(sessionId.value)
   history.value = response.turns
+}
+
+async function checkHealth(): Promise<void> {
+  healthLoading.value = true
+  healthError.value = ""
+  try {
+    health.value = await getHealth()
+  } catch (reason) {
+    health.value = null
+    healthError.value = reason instanceof Error ? reason.message : "API 状态检查失败"
+  } finally {
+    healthLoading.value = false
+  }
+}
+
+async function loadMetadata(kind: "policies" | "schema"): Promise<void> {
+  if (isDemoMode.value) return
+  const hasCachedData =
+    (kind === "policies" && policyMetadata.value.length > 0) ||
+    (kind === "schema" && schemaMetadata.value !== null)
+  if (hasCachedData) return
+
+  drawerLoading.value = true
+  if (kind === "policies") policyStatus.value = "checking"
+  else schemaStatus.value = "checking"
+  try {
+    if (kind === "policies") {
+      policyMetadata.value = (await getPolicyMetadata()).documents
+      policyStatus.value = "online"
+    } else {
+      schemaMetadata.value = await getSchemaMetadata()
+      schemaStatus.value = "online"
+    }
+  } catch (reason) {
+    drawerError.value = reason instanceof Error ? reason.message : "元数据读取失败，请稍后重试。"
+    if (kind === "policies") policyStatus.value = "offline"
+    else schemaStatus.value = "offline"
+  } finally {
+    drawerLoading.value = false
+  }
+}
+
+async function openMetadata(kind: "policies" | "schema"): Promise<void> {
+  drawerKind.value = kind
+  drawerError.value = ""
+  await loadMetadata(kind)
+}
+
+function closeMetadata(): void {
+  drawerKind.value = null
+  drawerError.value = ""
+}
+
+function demoResponseFor(queryText: string): ChatResponse {
+  if (queryText.includes("并说明") || queryText.includes("并依据") || queryText.includes("绩效")) {
+    return demoResponses.hybrid
+  }
+  if (queryText.includes("退货") || queryText.includes("制度")) return demoResponses.rag
+  return demoResponses.sql
+}
+
+async function submitDemo(): Promise<void> {
+  const stages = ["识别问题意图", "准备演示数据", "整理分析结果", "形成演示结论"]
+  for (const stage of stages) {
+    loadingStatus.value = stage
+    await new Promise((resolve) => window.setTimeout(resolve, 180))
+  }
+  const response = demoResponseFor(query.value.trim())
+  const turn = demoTurn(response, query.value.trim())
+  demoHistory.value = [...demoHistory.value, turn].slice(-20)
+  selectedTurnId.value = null
+  result.value = { ...response, session_id: "demo-session" }
+}
+
+async function toggleDemoMode(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement
+  isDemoMode.value = target.checked
+  result.value = null
+  selectedTurnId.value = null
+  activeTab.value = "overview"
+  error.value = ""
+  const url = new URL(window.location.href)
+  if (isDemoMode.value) {
+    url.searchParams.set("demo", "1")
+    healthLoading.value = false
+    policyMetadata.value = [...demoPolicyMetadata]
+    schemaMetadata.value = demoSchemaMetadata
+    policyStatus.value = "demo"
+    schemaStatus.value = "demo"
+  } else {
+    url.searchParams.delete("demo")
+    policyMetadata.value = []
+    schemaMetadata.value = null
+    await Promise.all([
+      checkHealth(),
+      refreshHistory(),
+      loadMetadata("policies"),
+      loadMetadata("schema"),
+    ])
+  }
+  window.history.replaceState({}, "", url)
 }
 
 async function submit(): Promise<void> {
@@ -214,17 +392,22 @@ async function submit(): Promise<void> {
   error.value = ""
   activeTab.value = "overview"
   copiedSql.value = false
+  selectedTurnId.value = null
   result.value = null
   try {
-    result.value = await streamQuestion(query.value.trim(), sessionId.value, (event, data) => {
-      if (event === "node") {
-        const node = String(data.node || "")
-        loadingStatus.value = nodeLabels[node] || "正在处理"
-      } else if (event === "heartbeat") {
-        loadingStatus.value = loadingStatus.value || "正在处理"
-      }
-    })
-    await refreshHistory()
+    if (isDemoMode.value) {
+      await submitDemo()
+    } else {
+      result.value = await streamQuestion(query.value.trim(), sessionId.value, (event, data) => {
+        if (event === "node") {
+          const node = String(data.node || "")
+          loadingStatus.value = nodeLabels[node] || "正在处理"
+        } else if (event === "heartbeat") {
+          loadingStatus.value = loadingStatus.value || "正在处理"
+        }
+      })
+      await refreshHistory()
+    }
     await nextTick()
     document.querySelector("#analysis-result")?.scrollIntoView({
       behavior: "smooth",
@@ -245,13 +428,15 @@ async function submit(): Promise<void> {
 async function clearSession(): Promise<void> {
   error.value = ""
   try {
-    await deleteSession(sessionId.value)
+    if (!isDemoMode.value) await deleteSession(sessionId.value)
     sessionId.value = crypto.randomUUID()
     localStorage.setItem(SESSION_STORAGE_KEY, sessionId.value)
     history.value = []
+    demoHistory.value = []
     result.value = null
     query.value = ""
     activeTab.value = "overview"
+    selectedTurnId.value = null
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : "清空会话失败。"
   }
@@ -291,6 +476,15 @@ function downloadCsv(): void {
 }
 
 onMounted(async () => {
+  if (isDemoMode.value) {
+    healthLoading.value = false
+  } else {
+    await Promise.all([
+      checkHealth(),
+      loadMetadata("policies"),
+      loadMetadata("schema"),
+    ])
+  }
   try {
     await refreshHistory()
   } catch (reason) {
@@ -316,22 +510,22 @@ onMounted(async () => {
           <span>分析工作台</span>
           <span class="nav-indicator" />
         </button>
-        <div class="nav-item static">
+        <button class="nav-item" type="button" @click="openMetadata('policies')">
           <Document />
           <span>制度知识库</span>
-          <small>8 份</small>
-        </div>
-        <div class="nav-item static">
+          <small>{{ policyMetadata.length || 8 }} 份</small>
+        </button>
+        <button class="nav-item" type="button" @click="openMetadata('schema')">
           <Collection />
           <span>经营数据库</span>
-          <small>8 表</small>
-        </div>
+          <small>{{ schemaMetadata?.tables.length || 8 }} 表</small>
+        </button>
       </nav>
 
       <section class="sidebar-section recent-section">
         <div class="sidebar-title">
           <span>最近会话</span>
-          <span>{{ history.length }}</span>
+          <span>{{ displayedHistory.length }}</span>
         </div>
         <div v-if="recentHistory.length" class="recent-list">
           <button
@@ -339,25 +533,30 @@ onMounted(async () => {
             :key="turn.turn_id"
             type="button"
             class="recent-item"
+            :class="{ selected: selectedTurnId === turn.turn_id }"
+            :data-turn-id="turn.turn_id"
             :title="turn.query"
             @click="reuseTurn(turn)"
           >
             <ChatLineRound />
-            <span>{{ turn.query }}</span>
+            <span class="recent-copy">
+              <span>{{ turn.query }}</span>
+              <small>{{ turn.intent }} · {{ formatDate(turn.created_at) }}</small>
+            </span>
           </button>
         </div>
         <p v-else class="sidebar-empty">完成首次分析后，会话会显示在这里。</p>
       </section>
 
       <div class="sidebar-footer">
-        <div class="service-health">
-          <span class="pulse-dot" />
-          <div>
-            <strong>服务运行正常</strong>
-            <span>MySQL · DeepSeek · BGE</span>
+        <div class="service-health-list" :title="healthError">
+          <div v-for="item in serviceItems" :key="item.label" class="service-health-row">
+            <span class="pulse-dot" :class="item.state" />
+            <span>{{ item.label }}</span>
+            <small>{{ serviceStateLabel(item.state) }}</small>
           </div>
         </div>
-        <div class="session-code">SESSION {{ sessionShortId }}</div>
+        <div class="session-code">{{ isDemoMode ? "DEMO SESSION" : `SESSION ${sessionShortId}` }}</div>
       </div>
     </aside>
 
@@ -369,6 +568,11 @@ onMounted(async () => {
         </div>
         <div class="topbar-actions">
           <span class="as-of-date"><span /> 数据截止 2026-06-30</span>
+          <label class="mode-toggle">
+            <input type="checkbox" :checked="isDemoMode" @change="toggleDemoMode" />
+            <span class="toggle-track"><span /></span>
+            <span>演示模式</span>
+          </label>
           <el-button class="new-session-button" @click="clearSession">
             <el-icon><Delete /></el-icon>
             新建会话
@@ -377,6 +581,13 @@ onMounted(async () => {
       </header>
 
       <div class="workspace-content">
+        <div v-if="isDemoMode" class="demo-banner">
+          <MagicStick />
+          <div>
+            <strong>演示模式已开启</strong>
+            <span>使用前端内置原创样例，不连接 DeepSeek 和业务数据库，不消耗 Token。</span>
+          </div>
+        </div>
         <section class="intro">
           <div>
             <p class="eyebrow">ASK YOUR BUSINESS</p>
@@ -497,6 +708,9 @@ onMounted(async () => {
             </div>
             <div class="result-flags">
               <span class="intent-pill" :class="`intent-${result.intent}`">{{ result.intent }}</span>
+              <span v-if="isDemoMode" class="demo-result-pill">演示数据</span>
+              <span v-if="isHistoricalResult" class="history-result-pill">历史快照</span>
+              <span v-else-if="!isDemoMode" class="current-result-pill">当前分析</span>
               <span v-if="result.context_used" class="context-pill">已使用会话上下文</span>
             </div>
           </header>
@@ -586,6 +800,13 @@ onMounted(async () => {
           </div>
 
           <div v-show="activeTab === 'data'" class="data-layout">
+            <el-alert
+              v-if="result.sql_result?.history_truncated"
+              title="历史快照仅保留前 100 行，原始总行数仍按查询结果显示。"
+              type="info"
+              show-icon
+              :closable="false"
+            />
             <article v-if="result.sql_result" class="content-card chart-card">
               <div class="section-heading">
                 <div>
@@ -723,5 +944,95 @@ onMounted(async () => {
         </section>
       </div>
     </main>
+
+    <button
+      v-if="drawerKind"
+      class="drawer-backdrop"
+      type="button"
+      aria-label="关闭信息抽屉"
+      @click="closeMetadata"
+    />
+    <aside v-if="drawerKind" class="metadata-drawer" :aria-label="drawerKind === 'policies' ? '制度知识库' : '经营数据库'">
+      <header class="drawer-header">
+        <div class="drawer-heading">
+          <span class="drawer-icon">
+            <Document v-if="drawerKind === 'policies'" />
+            <Collection v-else />
+          </span>
+          <div>
+            <span>{{ drawerKind === "policies" ? "POLICY CATALOG" : "SCHEMA CATALOG" }}</span>
+            <h2>{{ drawerKind === "policies" ? "制度知识库" : "经营数据库" }}</h2>
+          </div>
+        </div>
+        <button class="drawer-close" type="button" aria-label="关闭" @click="closeMetadata">×</button>
+      </header>
+
+      <div class="drawer-summary">
+        <CircleCheck />
+        <span v-if="drawerKind === 'policies'">只读目录 · {{ policyMetadata.length }} 份制度</span>
+        <span v-else>只读 Schema · {{ schemaMetadata?.tables.length || 0 }} 张表</span>
+      </div>
+
+      <div v-if="drawerLoading" class="drawer-state" role="status">
+        <span class="drawer-spinner" />
+        <strong>正在读取元数据</strong>
+        <p>该操作不会调用大模型。</p>
+      </div>
+      <div v-else-if="drawerError" class="drawer-state error-state">
+        <strong>暂时无法读取</strong>
+        <p>{{ drawerError }}</p>
+        <button type="button" @click="drawerKind && openMetadata(drawerKind)">重新检查</button>
+      </div>
+
+      <div v-else-if="drawerKind === 'policies'" class="metadata-list policy-catalog">
+        <article v-for="policy in policyMetadata" :key="policy.document_id" class="metadata-card">
+          <div class="metadata-card-head">
+            <span>{{ policy.document_id }}</span>
+            <span>v{{ policy.version }}</span>
+          </div>
+          <h3>{{ policy.title }}</h3>
+          <p>{{ policy.source }}</p>
+          <div class="metadata-stats">
+            <span>{{ policy.section_count }} 个章节</span>
+            <span>{{ policy.chunk_count }} 个分块</span>
+            <span>{{ policy.effective_date }}</span>
+          </div>
+        </article>
+        <div v-if="!policyMetadata.length" class="drawer-state">
+          <strong>制度目录为空</strong>
+        </div>
+      </div>
+
+      <div v-else class="metadata-list schema-catalog">
+        <details
+          v-for="(table, tableIndex) in schemaMetadata?.tables || []"
+          :key="table.name"
+          class="schema-table"
+          :open="tableIndex === 0"
+        >
+          <summary>
+            <span><DataAnalysis /> {{ table.name }}</span>
+            <small>{{ table.columns.length }} 字段</small>
+          </summary>
+          <div class="schema-columns">
+            <div class="schema-column schema-column-head">
+              <span>字段</span><span>类型</span><span>可空</span>
+            </div>
+            <div v-for="column in table.columns" :key="column.name" class="schema-column">
+              <code>{{ column.name }}</code>
+              <span>{{ column.type }}</span>
+              <span>{{ column.nullable ? "是" : "否" }}</span>
+            </div>
+          </div>
+        </details>
+        <div v-if="!schemaMetadata?.tables.length" class="drawer-state">
+          <strong>数据库目录为空</strong>
+        </div>
+      </div>
+
+      <footer class="drawer-footer">
+        <CircleCheck /> 仅展示公开模拟数据结构，不提供写入或任意 SQL 执行能力。
+      </footer>
+    </aside>
   </div>
 </template>
