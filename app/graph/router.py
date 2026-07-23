@@ -75,7 +75,14 @@ def classify_intent(query: str) -> Intent:
     """Deterministic starter router; replace with evaluated LLM routing later."""
 
     normalized = query.strip().lower()
-    if len(normalized) < 4 or normalized in {"这个呢", "怎么样", "帮我看看"}:
+    short_time_only = bool(TIME_PATTERN.fullmatch(normalized))
+    short_ambiguous_followup = len(normalized) <= 8 and normalized.endswith("怎么样")
+    if (
+        len(normalized) < 4
+        or normalized in {"这个呢", "怎么样", "帮我看看"}
+        or short_time_only
+        or short_ambiguous_followup
+    ):
         return "clarify"
 
     has_sql = any(keyword in normalized for keyword in SQL_KEYWORDS) or (

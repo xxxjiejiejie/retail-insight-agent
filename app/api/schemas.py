@@ -46,11 +46,14 @@ class ChatMetrics(BaseModel):
     reranked_count: int | None = None
     evidence_count: int | None = None
     citation_count: int | None = None
+    context_used: bool | None = None
 
 
 class ChatResponse(BaseModel):
     session_id: str
     intent: Intent
+    resolved_query: str | None = None
+    context_used: bool = False
     answer: str
     clarification: str | None = None
     generated_sql: str | None = None
@@ -65,6 +68,8 @@ class ChatTurn(BaseModel):
     turn_id: str
     created_at: datetime
     query: str
+    resolved_query: str | None = None
+    context_used: bool = False
     intent: Intent
     answer: str
     generated_sql: str | None = None

@@ -1,0 +1,31 @@
+[
+  {"id": "ROUTE-001", "query": "2026年第二季度各区域销售额是多少？", "expected_intent": "sql"},
+  {"id": "ROUTE-002", "query": "各城市分别有多少家门店？", "expected_intent": "sql"},
+  {"id": "ROUTE-003", "query": "2026年6月销售额最高的五家门店", "expected_intent": "sql"},
+  {"id": "ROUTE-004", "query": "最近三个月各商品类别的退货率", "expected_intent": "sql"},
+  {"id": "ROUTE-005", "query": "2026年6月30日各区域库存总量", "expected_intent": "sql"},
+
+  {"id": "ROUTE-006", "query": "七五折促销需要谁审批？", "expected_intent": "rag"},
+  {"id": "ROUTE-007", "query": "普通商品无质量问题的退货规定是什么？", "expected_intent": "rag"},
+  {"id": "ROUTE-008", "query": "门店月度全盘应该在什么时候进行？", "expected_intent": "rag"},
+  {"id": "ROUTE-009", "query": "顾客信息泄露后应该如何处理？", "expected_intent": "rag"},
+  {"id": "ROUTE-010", "query": "异常订单核查时能索要验证码吗？", "expected_intent": "rag"},
+
+  {"id": "ROUTE-011", "query": "查询2026年6月各门店销售目标完成率，并说明绩效制度中的指标权重", "expected_intent": "hybrid"},
+  {"id": "ROUTE-012", "query": "统计第二季度各类退货次数，同时说明无质量问题商品的退货规定", "expected_intent": "hybrid"},
+  {"id": "ROUTE-013", "query": "列出库存少于10件的商品，并依据库存盘点制度说明如何处理差异", "expected_intent": "hybrid"},
+  {"id": "ROUTE-014", "query": "查看六月各门店销售额，并结合促销制度说明七五折由谁审批", "expected_intent": "hybrid"},
+  {"id": "ROUTE-015", "query": "查询异常订单数量，同时说明金额超过五千元由谁核查", "expected_intent": "hybrid"},
+
+  {"id": "ROUTE-016", "query": "这个呢", "expected_intent": "clarify"},
+  {"id": "ROUTE-017", "query": "怎么样", "expected_intent": "clarify"},
+  {"id": "ROUTE-018", "query": "帮我看看", "expected_intent": "clarify"},
+  {"id": "ROUTE-019", "query": "第二季度", "expected_intent": "clarify"},
+  {"id": "ROUTE-020", "query": "华东怎么样", "expected_intent": "clarify"},
+
+  {"id": "ROUTE-021", "query": "你好，请介绍一下你的能力", "expected_intent": "general"},
+  {"id": "ROUTE-022", "query": "你能帮助零售运营人员做什么", "expected_intent": "general"},
+  {"id": "ROUTE-023", "query": "请给我一些可以提问的示例", "expected_intent": "general"},
+  {"id": "ROUTE-024", "query": "谢谢你的帮助", "expected_intent": "general"},
+  {"id": "ROUTE-025", "query": "这是一个测试消息", "expected_intent": "general"}
+]

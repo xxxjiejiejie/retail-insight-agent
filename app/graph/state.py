@@ -13,6 +13,9 @@ def merge_turns(
 
 class AgentState(TypedDict, total=False):
     user_query: str
+    resolved_query: str | None
+    context_used: bool
+    context_source_turn_id: str | None
     session_id: str
     intent: Intent
     clarification: str | None

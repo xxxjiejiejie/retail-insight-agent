@@ -27,3 +27,37 @@ def test_rag_evaluation_references_known_policy_documents() -> None:
     assert len({case["id"] for case in cases}) == 20
     assert sum(not case["expect_answer"] for case in cases) == 3
     assert all(set(case["expected_document_ids"]) <= known_ids for case in cases)
+
+
+def test_comprehensive_evaluation_defines_100_checks() -> None:
+    sql_cases = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "sql_smoke_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    rag_cases = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "rag_cases.json").read_text(encoding="utf-8")
+    )
+    router_cases = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "router_cases.json").read_text(encoding="utf-8")
+    )
+    hybrid_cases = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "hybrid_cases.json").read_text(encoding="utf-8")
+    )
+    safety_payload = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "sql_safety_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    all_ids = {
+        case["id"]
+        for cases in (sql_cases, rag_cases, router_cases, hybrid_cases, safety_payload["cases"])
+        for case in cases
+    }
+    assert len(sql_cases) == 30
+    assert len(rag_cases) == 20
+    assert len(router_cases) == 25
+    assert len(hybrid_cases) == 10
+    assert len(safety_payload["cases"]) == 15
+    assert len(all_ids) == 100

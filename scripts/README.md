@@ -21,4 +21,9 @@
 
 - `verify_session_stream.py --reset`：经公开 API 验证 SSE 事件顺序、最终结果和 SQLite 会话落库；默认使用 General 问题，不调用付费模型。
 
+## 综合评测
+
+- `evaluate_comprehensive.py --quick`：运行 50 项路由、Hybrid 拆分和 SQL 安全检查，不连接模型或数据库。
+- `evaluate_comprehensive.py`：增加 30 条真实 MySQL 参考 SQL 和 20 条本地 RAG 检索，共 100 项；不调用付费 LLM。
+
 报告写入 Git 忽略的 `data/runtime`。脚本不得输出 Key，也不得把本机绝对路径写入可提交配置。

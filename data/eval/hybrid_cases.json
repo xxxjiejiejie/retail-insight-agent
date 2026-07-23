@@ -1,0 +1,72 @@
+[
+  {
+    "id": "HYBRID-001",
+    "query": "查询2026年6月各门店销售目标完成率，并说明绩效制度中的指标权重",
+    "sql_contains": ["2026年6月", "销售目标完成率"],
+    "rag_contains": ["绩效制度", "指标权重"],
+    "expected_document_ids": ["POL-PERFORMANCE-001"]
+  },
+  {
+    "id": "HYBRID-002",
+    "query": "统计2026年第二季度各种退货原因的次数，同时说明普通商品无质量问题的退货规定",
+    "sql_contains": ["第二季度", "退货原因"],
+    "rag_contains": ["无质量问题", "退货规定"],
+    "expected_document_ids": ["POL-RETURN-001"]
+  },
+  {
+    "id": "HYBRID-003",
+    "query": "列出2026年6月30日库存少于10件的商品，并依据库存盘点制度说明差异处理流程",
+    "sql_contains": ["库存少于10件"],
+    "rag_contains": ["库存盘点制度", "差异处理"],
+    "expected_document_ids": ["POL-INVENTORY-001"]
+  },
+  {
+    "id": "HYBRID-004",
+    "query": "查看2026年6月各门店销售额，并结合促销制度说明七五折由谁审批",
+    "sql_contains": ["各门店销售额"],
+    "rag_contains": ["七五折", "谁审批"],
+    "expected_document_ids": ["POL-PROMO-001"]
+  },
+  {
+    "id": "HYBRID-005",
+    "query": "查询2026年第二季度异常订单数量，同时说明金额超过五千元由谁核查",
+    "sql_contains": ["异常订单数量"],
+    "rag_contains": ["五千元", "谁核查"],
+    "expected_document_ids": ["POL-ORDER-001"]
+  },
+  {
+    "id": "HYBRID-006",
+    "query": "统计各客户等级的销售额，并说明会员消费多少钱积一分",
+    "sql_contains": ["客户等级", "销售额"],
+    "rag_contains": ["多少钱积一分"],
+    "expected_document_ids": ["POL-MEMBER-001"]
+  },
+  {
+    "id": "HYBRID-007",
+    "query": "查询第二季度各商品类别销售额，同时说明商品售价调整百分之十需要哪些人审批",
+    "sql_contains": ["商品类别销售额"],
+    "rag_contains": ["售价调整百分之十", "审批"],
+    "expected_document_ids": ["POL-PRICE-001"]
+  },
+  {
+    "id": "HYBRID-008",
+    "query": "列出2026年6月新注册客户数，并依据隐私制度说明批量导出顾客信息由谁审批",
+    "sql_contains": ["新注册客户数"],
+    "rag_contains": ["批量导出顾客信息", "谁审批"],
+    "expected_document_ids": ["POL-PRIVACY-001"]
+  },
+  {
+    "id": "HYBRID-009",
+    "query": "查看各门店开业日期，并说明门店对绩效结果有异议时几天内申诉",
+    "sql_contains": ["门店开业日期"],
+    "rag_contains": ["绩效结果", "几天内申诉"],
+    "expected_document_ids": ["POL-PERFORMANCE-001"]
+  },
+  {
+    "id": "HYBRID-010",
+    "query": "查询第二季度折扣最高的商品，同时说明活动预算超过两万元由谁审批",
+    "sql_contains": ["折扣最高的商品"],
+    "rag_contains": ["预算超过两万元", "谁审批"],
+    "expected_document_ids": ["POL-PROMO-001"]
+  }
+]

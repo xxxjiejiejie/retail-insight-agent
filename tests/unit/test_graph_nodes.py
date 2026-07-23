@@ -15,6 +15,29 @@ async def test_sql_node_preserves_service_metrics(monkeypatch: pytest.MonkeyPatc
     assert result["metrics"]["total_tokens"] == 42
     assert result["metrics"]["attempt_count"] == 1
     assert result["metrics"]["sql_branch_ms"] >= 0
+    assert result["metrics"]["context_used"] is False
+
+
+@pytest.mark.asyncio
+async def test_sql_node_uses_resolved_context_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    received = ""
+
+    async def fake_handler(query: str) -> dict:
+        nonlocal received
+        received = query
+        return {"answer": "ok", "metrics": {}}
+
+    monkeypatch.setattr(nodes, "handle_sql_question", fake_handler)
+    result = await nodes.sql_node(
+        {
+            "user_query": "那华东呢",
+            "resolved_query": "第二季度各区域销售额；基于上一问题继续追问：那华东呢",
+            "context_used": True,
+        }
+    )
+
+    assert received.startswith("第二季度各区域销售额")
+    assert result["metrics"]["context_used"] is True
 
 
 def test_merge_hybrid_metrics_sums_tokens_and_preserves_rag_metrics() -> None:

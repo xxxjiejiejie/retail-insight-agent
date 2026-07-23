@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from time import perf_counter
 from uuid import uuid4
 
+from app.graph.context import resolve_contextual_query
 from app.graph.router import classify_intent
 from app.graph.state import AgentState
 from app.rag.service import handle_rag_question
@@ -39,7 +40,23 @@ def merge_hybrid_metrics(
 
 
 def route_node(state: AgentState) -> dict:
-    return {"intent": classify_intent(state["user_query"])}
+    resolution = resolve_contextual_query(state["user_query"], state.get("turns"))
+    return {
+        "intent": classify_intent(resolution.query),
+        "resolved_query": resolution.query,
+        "context_used": resolution.used_context,
+        "context_source_turn_id": resolution.source_turn_id,
+    }
+
+
+def effective_query(state: AgentState) -> str:
+    return state.get("resolved_query") or state["user_query"]
+
+
+def attach_context_metric(state: AgentState, result: dict) -> dict:
+    metrics = result.setdefault("metrics", {})
+    metrics["context_used"] = bool(state.get("context_used"))
+    return result
 
 
 def split_hybrid_query(query: str) -> tuple[str, str]:
@@ -71,28 +88,28 @@ def general_node(state: AgentState) -> dict:
 
 async def sql_node(state: AgentState) -> dict:
     started = perf_counter()
-    result = await handle_sql_question(state["user_query"])
+    result = await handle_sql_question(effective_query(state))
     metrics = result.setdefault("metrics", {})
     metrics["sql_branch_ms"] = round((perf_counter() - started) * 1000, 2)
-    return result
+    return attach_context_metric(state, result)
 
 
 async def rag_node(state: AgentState) -> dict:
     started = perf_counter()
-    result = await handle_rag_question(state["user_query"])
+    result = await handle_rag_question(effective_query(state))
     metrics = result.setdefault("metrics", {})
     metrics["rag_branch_ms"] = round((perf_counter() - started) * 1000, 2)
-    return result
+    return attach_context_metric(state, result)
 
 
 async def hybrid_node(state: AgentState) -> dict:
     started = perf_counter()
-    sql_query, rag_query = split_hybrid_query(state["user_query"])
+    sql_query, rag_query = split_hybrid_query(effective_query(state))
     sql_result, rag_result = await asyncio.gather(
         handle_sql_question(sql_query),
         handle_rag_question(rag_query),
     )
-    return {
+    result = {
         "generated_sql": sql_result.get("generated_sql"),
         "sql_result": sql_result.get("sql_result"),
         "chart_spec": sql_result.get("chart_spec"),
@@ -106,6 +123,7 @@ async def hybrid_node(state: AgentState) -> dict:
             total_ms=(perf_counter() - started) * 1000,
         ),
     }
+    return attach_context_metric(state, result)
 
 
 def route_key(state: AgentState) -> str:
@@ -119,6 +137,8 @@ def persist_turn_node(state: AgentState) -> dict:
         "turn_id": str(uuid4()),
         "created_at": datetime.now(UTC).isoformat(),
         "query": state["user_query"],
+        "resolved_query": state.get("resolved_query"),
+        "context_used": bool(state.get("context_used")),
         "intent": state["intent"],
         "answer": state.get("answer") or "当前分支没有返回答案。",
         "generated_sql": state.get("generated_sql"),

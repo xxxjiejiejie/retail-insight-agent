@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-当前为 **v0.5 多格式文档与混合检索第一版**，已经实现：
+当前为 **v0.6 综合评测与基础多轮上下文版**，已经实现：
 
 - FastAPI `POST /api/v1/chat` 与 LangGraph 条件路由；
 - DeepSeek V4 Pro Anthropic 兼容客户端；
@@ -21,6 +21,9 @@
 - LangGraph `AsyncSqliteSaver` Checkpointer、最近 20 轮轻量会话记录、查询与清空接口；
 - `POST /api/v1/chat/stream` SSE 节点进度流，含 10 秒心跳、最终结果与安全错误事件；
 - Vue 将会话 ID 保存在浏览器本地，刷新后从 SQLite 恢复历史，并可清空后创建新会话；
+- 基础上下文追问解析：将“那华东呢”“换成五月”“这个制度的申诉期限呢”等短追问与最近一次分析问题组合，不增加额外 LLM 调用；
+- 统一 100 项本地评测：30 条 SQL 参考执行、20 条 RAG 召回/拒答、25 条路由、10 条 Hybrid 拆分和 15 条 SQL 安全边界；
+- SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
 - Python 3.12、pytest、Ruff、MyPy 和可重复评测脚本。
 
 当前真实评测结果：
@@ -29,6 +32,7 @@
 - 首批 5/5 条 DeepSeek Text-to-SQL 的数据库执行结果与参考结果一致；
 - 20/20 条本地 RAG 召回/拒答评测通过；
 - 17 条有答案题中纯向量与混合召回均为 17/17，当前小型题集尚未体现召回增益；
+- 100/100 项完整本地综合评测通过，两次运行约 23～28 秒，付费 LLM 调用为 0；
 - 20/20 条真实 DeepSeek RAG 评测通过，其中 17 条各返回正确制度引用，3 条库外问题零引用拒答；
 - 17 条有答案 RAG 题共使用 11025 Token，平均检索 59.06ms、重排 300.60ms、LLM 3111.78ms。
 
@@ -37,7 +41,7 @@
 尚未完成：
 
 - 扫描版 PDF 的 OCR；
-- 50～100 条 SQL/RAG/Hybrid 综合评测；
+- 真实 DeepSeek 端到端评测仍只有 SQL 5 条、RAG 20 条；100 项综合评测主要用于本地规则、安全、参考 SQL 和检索回归；
 - GPU RAG API 镜像。当前 Compose 使用约 494MB 的 CPU API 镜像保证可移植部署；需要更快的 RAG 推理时，仍使用主机 Python + RTX 4060。
 
 ## 架构
@@ -239,7 +243,11 @@ python scripts/verify_session_stream.py --reset
 python scripts/verify_sql_references.py
 python scripts/evaluate_sql_smoke.py --reuse-generated
 python scripts/evaluate_rag_retrieval.py
+python scripts/evaluate_comprehensive.py --quick
+python scripts/evaluate_comprehensive.py
 ```
+
+`--quick` 只运行 50 项路由、Hybrid 拆分和 SQL 安全检查；完整模式连接真实 MySQL 并加载本地 BGE，共运行 100 项，但不会调用 DeepSeek。报告写入 `data/runtime/comprehensive_eval_report.json`。
 
 评测报告写入已被 Git 忽略的 `data/runtime`，不会保存 Key。
 
@@ -255,7 +263,7 @@ Content-Type: application/json
 }
 ```
 
-响应会根据分支返回 `generated_sql`、`sql_result`、`chart_spec`、`citations`、`errors` 和 `metrics`。引用包含制度名、版本、章节、PDF 页码（如有）、段落编号、原文片段和相关度。
+响应会根据分支返回 `resolved_query`、`context_used`、`generated_sql`、`sql_result`、`chart_spec`、`citations`、`errors` 和 `metrics`。引用包含制度名、版本、章节、PDF 页码（如有）、段落编号、原文片段和相关度。
 
 流式接口为 `POST /api/v1/chat/stream`，依次发送 `start`、`node`、可选 `heartbeat`、`result` 和 `done` 事件。这里的“流式”是可观测的 LangGraph 节点进度与最终结果，不是伪造的逐 Token 输出。
 

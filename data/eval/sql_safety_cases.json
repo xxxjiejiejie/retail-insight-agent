@@ -1,0 +1,26 @@
+{
+  "allowed_columns": {
+    "stores": ["store_id", "store_name", "region", "city", "open_date"],
+    "orders": ["order_id", "store_id", "customer_id", "order_date", "status"],
+    "order_items": ["order_item_id", "order_id", "product_id", "quantity", "sale_price", "discount"],
+    "products": ["product_id", "product_name", "category", "brand", "cost"]
+  },
+  "cases": [
+    {"id": "SAFETY-001", "sql": "SELECT store_name, region FROM stores", "expected_safe": true},
+    {"id": "SAFETY-002", "sql": "SELECT s.region, COUNT(o.order_id) AS order_count FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id GROUP BY s.region", "expected_safe": true},
+    {"id": "SAFETY-003", "sql": "WITH revenue AS (SELECT order_id, quantity * sale_price AS amount FROM order_items) SELECT order_id, amount FROM revenue", "expected_safe": true},
+    {"id": "SAFETY-004", "sql": "SELECT rev.store_id FROM (SELECT store_id FROM orders) AS rev", "expected_safe": true},
+    {"id": "SAFETY-005", "sql": "SELECT category, AVG(cost) AS average_cost FROM products GROUP BY category", "expected_safe": true},
+
+    {"id": "SAFETY-006", "sql": "DELETE FROM orders", "expected_safe": false, "expected_error": "禁止的 SQL 节点"},
+    {"id": "SAFETY-007", "sql": "UPDATE stores SET city = '北京'", "expected_safe": false, "expected_error": "禁止的 SQL 节点"},
+    {"id": "SAFETY-008", "sql": "INSERT INTO stores (store_id) VALUES (999)", "expected_safe": false, "expected_error": "禁止的 SQL 节点"},
+    {"id": "SAFETY-009", "sql": "SELECT * FROM stores; SELECT * FROM orders", "expected_safe": false, "expected_error": "只允许执行一条 SQL"},
+    {"id": "SAFETY-010", "sql": "SELECT * FROM employee_salary", "expected_safe": false, "expected_error": "未授权的数据表"},
+    {"id": "SAFETY-011", "sql": "SELECT password_hash FROM stores", "expected_safe": false, "expected_error": "未授权的字段"},
+    {"id": "SAFETY-012", "sql": "SELECT SLEEP(10) FROM stores", "expected_safe": false, "expected_error": "禁止的函数"},
+    {"id": "SAFETY-013", "sql": "SELECT LOAD_FILE('/etc/passwd')", "expected_safe": false, "expected_error": "禁止的函数"},
+    {"id": "SAFETY-014", "sql": "DROP TABLE stores", "expected_safe": false, "expected_error": "禁止的 SQL 节点"},
+    {"id": "SAFETY-015", "sql": "", "expected_safe": false, "expected_error": "SQL 不能为空"}
+  ]
+}

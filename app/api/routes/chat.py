@@ -19,6 +19,9 @@ def get_runtime_graph(request: Request) -> Any:
 def initial_state(request: ChatRequest) -> dict[str, Any]:
     return {
         "user_query": request.query,
+        "resolved_query": None,
+        "context_used": False,
+        "context_source_turn_id": None,
         "session_id": request.session_id,
         "clarification": None,
         "selected_tables": [],
@@ -40,6 +43,8 @@ def response_from_state(request: ChatRequest, state: dict[str, Any]) -> ChatResp
     return ChatResponse(
         session_id=request.session_id,
         intent=state["intent"],
+        resolved_query=state.get("resolved_query"),
+        context_used=bool(state.get("context_used")),
         answer=state.get("answer") or "当前分支没有返回答案。",
         clarification=state.get("clarification"),
         generated_sql=state.get("generated_sql"),

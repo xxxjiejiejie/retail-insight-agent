@@ -44,11 +44,14 @@ export interface ChatMetrics {
   reranked_count?: number
   evidence_count?: number
   citation_count?: number
+  context_used?: boolean
 }
 
 export interface ChatResponse {
   session_id: string
   intent: Intent
+  resolved_query?: string | null
+  context_used: boolean
   answer: string
   clarification?: string | null
   generated_sql?: string | null
@@ -63,6 +66,8 @@ export interface ChatTurn {
   turn_id: string
   created_at: string
   query: string
+  resolved_query?: string | null
+  context_used: boolean
   intent: Intent
   answer: string
   generated_sql?: string | null

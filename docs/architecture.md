@@ -1,9 +1,9 @@
-# v0.5 架构说明
+# v0.6 架构说明
 
 ## 请求生命周期
 
 1. Vue 将持久化在浏览器本地的 `session_id` 与 `query` 发送到 `POST /api/v1/chat/stream`。
-2. FastAPI 创建 `AgentState`，LangGraph 的规则路由判断 SQL、RAG、Hybrid、Clarify 或 General。
+2. FastAPI 创建 `AgentState`；若当前输入是短追问，Context Resolver 从最近一次 SQL/RAG/Hybrid turn 生成 `resolved_query`，再由 LangGraph 规则路由判断 SQL、RAG、Hybrid、Clarify 或 General。
 3. SQL 分支读取真实 Schema，由 DeepSeek 返回 JSON SQL 计划，经 SQLGlot 和白名单校验后用只读账号执行。
 4. RAG 分支并行执行 Chroma 向量召回与 BM25 关键词召回，经 RRF 融合出 12 个制度块；BGE Reranker 保留 5 个，再按相关度阈值筛选证据。
 5. DeepSeek 只能依据筛选后的上下文回答；服务解析答案中的 `[数字]`，仅返回实际使用的引用。
@@ -25,6 +25,8 @@ Vue localStorage session_id
 ```
 
 每轮开始前会显式清空 SQL/RAG 分支临时字段，避免 Checkpointer 将上一轮 SQL、引用或澄清信息带入新分支。历史 reducer 只保留最近 20 轮，turn 不保存大体积 `sql_result`。Checkpointer 仍会保存图运行状态，因此当前 SQLite 方案定位为本地演示；生产环境应迁移到 Postgres 并增加保留策略。
+
+基础上下文解析仅处理带“那、这个、换成、刚才、呢、怎么样”等特征的短追问，并只引用最近一次分析类 turn。完整新问题保持独立；没有分析历史时短问题继续进入 Clarify。解析结果和 `context_used` 会进入 API 响应与会话记录，便于页面解释系统实际理解的问题。当前方案不额外调用 LLM，因此没有新增 Token；复杂代词、多实体指代和跨多轮总结仍属于后续工作。
 
 SSE 使用 POST + Fetch 流式读取，事件为 `start`、`node`、`heartbeat`、`result`、`error`、`done`。Nginx 关闭代理缓冲，长节点每 10 秒发送心跳。当前 DeepSeek 客户端不是 Token 流式客户端，因此系统只承诺节点级进度，不宣称逐 Token 生成。
 
@@ -114,7 +116,7 @@ LLM 不生成图片，也不执行绘图代码。后端只允许：
 
 ## 当前技术债
 
-- 已保存会话历史，但尚未将历史摘要注入路由/提示词实现代词与省略式追问；
+- 已支持基础省略式追问，但尚未实现复杂多实体指代、历史摘要压缩和跨多轮约束合并；
 - PDF 当前仅支持文本型文件，扫描件尚未接入 OCR；
 - Hybrid 目前合并两个分支答案，尚未增加第三次统一总结调用；
 - 已提供 CPU RAG API 的完整 Compose 镜像，并从主机只读挂载模型缓存；GPU 推理仍通过主机 Python 环境运行，尚未提供 NVIDIA Container Toolkit 版镜像；
