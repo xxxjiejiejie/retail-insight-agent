@@ -2040,6 +2040,88 @@ button.nav-item {
   text-align: right;
 }
 
+.evaluation-set-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.evaluation-set-summary {
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid #dce6e2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.evaluation-set-summary.challenge {
+  border-color: #e8d9bd;
+  background: #fffaf0;
+}
+
+.evaluation-set-summary.limitations {
+  border-color: #e4d7d4;
+  background: #fffafa;
+}
+
+.evaluation-set-label {
+  display: block;
+  color: var(--brand);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.evaluation-set-summary > strong {
+  display: block;
+  margin-top: 11px;
+  color: #29463d;
+  font: 700 24px "Cascadia Code", Consolas, monospace;
+}
+
+.evaluation-set-summary > b {
+  display: block;
+  margin-top: 3px;
+  color: #64766f;
+  font-size: 11px;
+}
+
+.evaluation-set-summary p {
+  margin: 11px 0 0;
+  color: #82908b;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.evaluation-set-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.evaluation-set-categories span {
+  padding: 4px 6px;
+  border: 1px solid #eadfc9;
+  border-radius: 4px;
+  color: #8c6b31;
+  font-size: 8px;
+}
+
+.evaluation-set-categories strong {
+  color: #6f5225;
+}
+
+.evaluation-set-summary ul {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-left: 14px;
+  color: #8b716c;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .evaluation-branch-grid {
   display: grid;
   min-width: 0;
@@ -2610,6 +2692,10 @@ button.nav-item {
   }
 
   .quality-gate-band {
+    grid-template-columns: 1fr;
+  }
+
+  .evaluation-set-grid {
     grid-template-columns: 1fr;
   }
 

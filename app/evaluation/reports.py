@@ -83,6 +83,28 @@ def _branch_summary(
     }
 
 
+def _challenge_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    passed = sum(bool(entry.get("passed")) for entry in entries)
+    categories: dict[str, dict[str, Any]] = {}
+    for category in sorted({str(entry.get("category") or "unknown") for entry in entries}):
+        category_entries = [
+            entry for entry in entries if str(entry.get("category") or "unknown") == category
+        ]
+        category_passed = sum(bool(entry.get("passed")) for entry in category_entries)
+        categories[category] = {
+            "passed": category_passed,
+            "total": len(category_entries),
+            "accuracy": round(category_passed / len(category_entries), 4),
+        }
+    return {
+        "passed": passed,
+        "total": len(entries),
+        "accuracy": round(passed / len(entries), 4) if entries else 0.0,
+        "categories": categories,
+        "description": "SQL 边界、RAG 库外问题与 Prompt Injection 实际运行结果。",
+    }
+
+
 def _failure_diagnosis(branch: str, entry: dict[str, Any]) -> tuple[str, str]:
     errors = _entry_errors(entry)
     if branch == "sql":
@@ -143,11 +165,39 @@ def _failure_sample(branch: str, entry: dict[str, Any]) -> dict[str, Any]:
     return {
         "case_id": str(entry.get("id") or "unknown"),
         "branch": branch,
+        "set_type": "normal",
         "failure_type": failure_type,
         "diagnosis": diagnosis,
         "question": str(entry.get("question") or ""),
         "expected": expected,
         "actual": actual,
+        "errors": _entry_errors(entry),
+        "generated_sql": entry.get("generated_sql"),
+        "total_tokens": _as_number(metrics.get("total_tokens")),
+        "latency_ms": _as_number(metrics.get("total_latency_ms")),
+    }
+
+
+def _challenge_failure_sample(entry: dict[str, Any]) -> dict[str, Any]:
+    category = str(entry.get("category") or "challenge_failed")
+    diagnoses = {
+        "sql_boundary": "SQL 边界条件结果未匹配参考查询。",
+        "rag_out_of_scope": "库外问题未正确拒答。",
+        "prompt_injection": "Prompt Injection 防护条件未全部满足。",
+    }
+    raw_metrics = entry.get("metrics")
+    metrics: dict[str, Any] = raw_metrics if isinstance(raw_metrics, dict) else {}
+    expected = entry.get("expected")
+    actual = entry.get("actual")
+    return {
+        "case_id": str(entry.get("id") or "unknown"),
+        "branch": str(entry.get("branch") or "rag"),
+        "set_type": "challenge",
+        "failure_type": category,
+        "diagnosis": diagnoses.get(category, "挑战样本未满足预期条件。"),
+        "question": str(entry.get("question") or ""),
+        "expected": expected if isinstance(expected, dict) else {},
+        "actual": actual if isinstance(actual, dict) else {},
         "errors": _entry_errors(entry),
         "generated_sql": entry.get("generated_sql"),
         "total_tokens": _as_number(metrics.get("total_tokens")),
@@ -203,6 +253,28 @@ def _quality_gate(report_directory: Path) -> dict[str, Any] | None:
     }
 
 
+def _known_limitations(eval_directory: Path) -> list[dict[str, str]]:
+    path = eval_directory / "known_limitations.json"
+    if not path.exists():
+        return []
+    payload = _load_json(path)
+    if not isinstance(payload, list):
+        raise ValueError("已知限制清单必须是 JSON 数组")
+    limitations: list[dict[str, str]] = []
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        limitations.append(
+            {
+                "id": str(entry.get("id") or "unknown"),
+                "title": str(entry.get("title") or "未命名限制"),
+                "description": str(entry.get("description") or ""),
+                "status": str(entry.get("status") or "open"),
+            }
+        )
+    return limitations
+
+
 def build_evaluation_run(
     *,
     project_root: Path,
@@ -221,6 +293,7 @@ def build_evaluation_run(
     sql_path = report_directory / "sql_smoke_report.json"
     rag_path = report_directory / "rag_eval_report.json"
     hybrid_default = report_directory / "hybrid_live_report.json"
+    challenge_path = report_directory / "challenge_eval_report.json"
     hybrid_paths = (
         [hybrid_default]
         if hybrid_default.exists()
@@ -233,6 +306,7 @@ def build_evaluation_run(
         for entry in _report_entries(path):
             hybrid_by_id[str(entry.get("id") or path.stem)] = entry
     hybrid_entries = list(hybrid_by_id.values())
+    challenge_entries = _report_entries(challenge_path)
 
     branches = {
         "sql": _branch_summary(sql_entries, coverage="真实模型 SQL 结果比对"),
@@ -249,16 +323,23 @@ def build_evaluation_run(
         for entry in entries
         if not bool(entry.get("passed"))
     ]
+    failures.extend(
+        _challenge_failure_sample(entry)
+        for entry in challenge_entries
+        if not bool(entry.get("passed"))
+    )
     total_cases = sum(branch["total"] for branch in branches.values())
     total_passed = sum(branch["passed"] for branch in branches.values())
     commit, workspace_state = _git_metadata(project_root)
-    source_paths = [sql_path, rag_path, *hybrid_paths]
+    source_paths = [sql_path, rag_path, *hybrid_paths, challenge_path]
     source_reports = [path.name for path in source_paths if path.exists()]
     notes = ["本地 100 项质量门禁不计入 SQL/RAG/Hybrid 端到端准确率。"]
     if len(sql_entries) < 30:
         notes.append(f"当前 SQL 真实报告仅保留 {len(sql_entries)} 条样本。")
     if len(hybrid_entries) < 5:
         notes.append(f"当前 Hybrid 真实报告仅保留 {len(hybrid_entries)} 条抽样。")
+    notes.append("SQL/RAG/Hybrid 主指标只统计正常集；挑战集单独统计，不混入主准确率。")
+    challenge_summary = _challenge_summary(challenge_entries)
     return {
         "run_id": run_id,
         "label": label.strip() or run_id,
@@ -271,6 +352,24 @@ def build_evaluation_run(
         "total_passed": total_passed,
         "overall_accuracy": round(total_passed / total_cases, 4) if total_cases else 0.0,
         "branches": branches,
+        "evaluation_sets": {
+            "normal": {
+                "passed": total_passed,
+                "total": total_cases,
+                "accuracy": round(total_passed / total_cases, 4) if total_cases else 0.0,
+                "categories": {
+                    branch: {
+                        "passed": summary["passed"],
+                        "total": summary["total"],
+                        "accuracy": summary["accuracy"],
+                    }
+                    for branch, summary in branches.items()
+                },
+                "description": "SQL、RAG 与 Hybrid 端到端正常业务问题。",
+            },
+            "challenge": challenge_summary,
+        },
+        "known_limitations": _known_limitations(eval_directory),
         "quality_gate": _quality_gate(report_directory),
         "failures": failures,
         "source_reports": source_reports,

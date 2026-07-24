@@ -1,5 +1,7 @@
 # Retail Insight Agent
 
+> 当前真实评测状态以文末“v0.9 真实评测批次”和 `data/runtime/evaluation_runs/v09-expanded-challenges-20260724.json` 为准：正常集 52/55，挑战集 10/12，失败样本 5 条。
+
 面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Clarify 或 General 分支。
 
 ## 当前版本
@@ -306,3 +308,13 @@ Content-Type: application/json
 ## 开源与归属
 
 项目采用 MIT License。参考项目、保留内容与重写原则见 [NOTICE.md](NOTICE.md)。制度文档和模拟经营数据为本项目公开演示用途，不包含真实企业隐私。
+## v0.9 真实评测批次
+
+当前可验证的第二批次为 `v09-expanded-challenges-20260724`：
+
+- 正常集 55 条：SQL 30 条（27/30）、RAG 20 条（20/20）、Hybrid 5 条（5/5），合计 52/55，准确率 94.55%。
+- 挑战集 12 条：SQL 边界 4 条、RAG 库外 5 条、Prompt Injection 3 条，合计 10/12；挑战集不混入正常集主准确率。
+- 失败样本共 5 条，均从真实运行报告生成，包含 SQL 响应解析、聚合边界、结果值比对、SQL 别名白名单和库外引用噪声等类型。
+- 评测页会单独展示正常集、挑战集、已知限制和历史批次；运行 `scripts/evaluate_challenges.py` 后，再用 `scripts/archive_evaluation_run.py --run-id <唯一批次名>` 归档。
+
+此前 v0.8 的 `v08-baseline-20260724` 仍保留为历史批次，不能用新报告覆盖。

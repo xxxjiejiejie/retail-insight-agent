@@ -107,6 +107,23 @@ def _build_fixture_run(tmp_path: Path) -> dict:
             },
         },
     )
+    _write_json(
+        runtime / "challenge_eval_report.json",
+        [
+            {
+                "id": "SQL-CH-001",
+                "set_type": "challenge",
+                "category": "sql_boundary",
+                "branch": "sql",
+                "question": "边界题",
+                "passed": True,
+                "expected": {"row_count": 0},
+                "actual": {"row_count": 0},
+                "errors": [],
+                "metrics": {"total_tokens": 50, "total_latency_ms": 700},
+            }
+        ],
+    )
     return build_evaluation_run(
         project_root=tmp_path,
         report_directory=runtime,
@@ -129,6 +146,9 @@ def test_builds_branch_metrics_and_deterministic_failures(tmp_path: Path) -> Non
     assert run["branches"]["rag"]["rejected"] == 1
     assert run["branches"]["rag"]["rejection_rate"] == 0.3333
     assert run["quality_gate"]["accuracy"] == 0.8
+    assert run["evaluation_sets"]["normal"]["total"] == 6
+    assert run["evaluation_sets"]["challenge"]["total"] == 1
+    assert run["evaluation_sets"]["challenge"]["categories"]["sql_boundary"]["passed"] == 1
     assert {failure["failure_type"] for failure in run["failures"]} == {
         "row_count_mismatch",
         "citation_missing",

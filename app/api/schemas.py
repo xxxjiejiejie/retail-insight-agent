@@ -162,9 +162,25 @@ class EvaluationQualityGateResponse(BaseModel):
     categories: dict[str, Any] = Field(default_factory=dict)
 
 
+class EvaluationSetMetricsResponse(BaseModel):
+    passed: int
+    total: int
+    accuracy: float
+    categories: dict[str, Any] = Field(default_factory=dict)
+    description: str
+
+
+class EvaluationKnownLimitationResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    status: str
+
+
 class EvaluationFailureResponse(BaseModel):
     case_id: str
     branch: str
+    set_type: str = "normal"
     failure_type: str
     diagnosis: str
     question: str
@@ -188,6 +204,8 @@ class EvaluationRunSummaryResponse(BaseModel):
     total_passed: int
     overall_accuracy: float
     branches: dict[str, EvaluationBranchMetricsResponse]
+    evaluation_sets: dict[str, EvaluationSetMetricsResponse] = Field(default_factory=dict)
+    known_limitations: list[EvaluationKnownLimitationResponse] = Field(default_factory=list)
     quality_gate: EvaluationQualityGateResponse | None = None
 
 

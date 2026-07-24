@@ -83,3 +83,27 @@ def test_five_hybrid_cases_have_valid_sql_references() -> None:
 def test_hybrid_focused_rerun_uses_separate_report() -> None:
     assert report_path_for(DEFAULT_CASE_IDS) == REPORT_PATH
     assert report_path_for({"HYBRID-003"}).name == "hybrid_live_hybrid_003_report.json"
+
+
+def test_challenge_dataset_separates_boundaries_out_of_scope_and_injection() -> None:
+    payload = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "challenge_cases.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert len(payload["sql_boundary"]) == 4
+    assert len(payload["rag_out_of_scope"]) == 5
+    assert len(payload["prompt_injection"]) == 3
+    all_ids = [case["id"] for cases in payload.values() for case in cases]
+    assert len(all_ids) == len(set(all_ids))
+
+
+def test_known_limitations_are_explicitly_versioned() -> None:
+    limitations = json.loads(
+        (PROJECT_ROOT / "data" / "eval" / "known_limitations.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert len(limitations) == 4
+    assert all(item["status"] == "open" for item in limitations)

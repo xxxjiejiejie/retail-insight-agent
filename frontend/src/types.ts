@@ -163,9 +163,25 @@ export interface EvaluationQualityGate {
   categories: Record<string, { passed: number; total: number; pass_rate: number }>
 }
 
+export interface EvaluationSetMetrics {
+  passed: number
+  total: number
+  accuracy: number
+  categories: Record<string, { passed: number; total: number; accuracy: number }>
+  description: string
+}
+
+export interface EvaluationKnownLimitation {
+  id: string
+  title: string
+  description: string
+  status: string
+}
+
 export interface EvaluationFailure {
   case_id: string
   branch: EvaluationBranch
+  set_type: "normal" | "challenge"
   failure_type: string
   diagnosis: string
   question: string
@@ -189,6 +205,8 @@ export interface EvaluationRunSummary {
   total_passed: number
   overall_accuracy: number
   branches: Record<EvaluationBranch, EvaluationBranchMetrics>
+  evaluation_sets?: Record<string, EvaluationSetMetrics>
+  known_limitations?: EvaluationKnownLimitation[]
   quality_gate?: EvaluationQualityGate | null
 }
 

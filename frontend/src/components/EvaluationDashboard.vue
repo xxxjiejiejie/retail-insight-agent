@@ -51,6 +51,9 @@ const filteredFailures = computed(() => {
 const qualityCategories = computed(() =>
   Object.entries(selectedRun.value?.quality_gate?.categories ?? {}),
 )
+const challengeCategories = computed(() =>
+  Object.entries(selectedRun.value?.evaluation_sets?.challenge?.categories ?? {}),
+)
 
 function percent(value: number | null | undefined): string {
   return value == null ? "--" : `${(value * 100).toFixed(1)}%`
@@ -228,6 +231,50 @@ onMounted(refresh)
         <small>本地门禁不计入端到端模型准确率</small>
       </section>
 
+      <section v-if="selectedRun.evaluation_sets" class="evaluation-section evaluation-set-section">
+        <div class="evaluation-section-heading">
+          <div>
+            <span class="section-kicker">DATASET SCOPE</span>
+            <h2>正常集、挑战集与已知限制</h2>
+          </div>
+          <span>挑战集不改变主分支准确率</span>
+        </div>
+        <div class="evaluation-set-grid">
+          <article class="evaluation-set-summary">
+            <span class="evaluation-set-label">NORMAL SET</span>
+            <strong>
+              {{ selectedRun.evaluation_sets.normal?.passed ?? selectedRun.total_passed }}/{{
+                selectedRun.evaluation_sets.normal?.total ?? selectedRun.total_cases
+              }}
+            </strong>
+            <b>{{ percent(selectedRun.evaluation_sets.normal?.accuracy ?? selectedRun.overall_accuracy) }}</b>
+            <p>{{ selectedRun.evaluation_sets.normal?.description || "正常业务端到端样本。" }}</p>
+          </article>
+          <article class="evaluation-set-summary challenge">
+            <span class="evaluation-set-label">CHALLENGE SET</span>
+            <strong v-if="selectedRun.evaluation_sets.challenge">
+              {{ selectedRun.evaluation_sets.challenge.passed }}/{{ selectedRun.evaluation_sets.challenge.total }}
+            </strong>
+            <strong v-else>--</strong>
+            <b>{{ percent(selectedRun.evaluation_sets.challenge?.accuracy) }}</b>
+            <div class="evaluation-set-categories">
+              <span v-for="[name, item] in challengeCategories" :key="name">
+                {{ name }} <strong>{{ item.passed }}/{{ item.total }}</strong>
+              </span>
+            </div>
+            <p>{{ selectedRun.evaluation_sets.challenge?.description || "尚未运行挑战集。" }}</p>
+          </article>
+          <article class="evaluation-set-summary limitations">
+            <span class="evaluation-set-label">KNOWN LIMITATIONS</span>
+            <strong>{{ selectedRun.known_limitations?.length ?? 0 }}</strong>
+            <b>待补强项</b>
+            <ul>
+              <li v-for="item in selectedRun.known_limitations" :key="item.id">{{ item.title }}</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
       <section class="evaluation-branch-grid" aria-label="分支评测指标">
         <article v-for="branch in branchOrder" :key="branch" class="evaluation-branch-card">
           <header>
@@ -295,7 +342,7 @@ onMounted(refresh)
                 <strong>{{ failure.case_id }} · {{ failure.diagnosis }}</strong>
                 <p>{{ failure.question }}</p>
               </div>
-              <small>{{ failure.failure_type }}</small>
+              <small>{{ failure.set_type === "challenge" ? "挑战集" : "正常集" }} · {{ failure.failure_type }}</small>
             </div>
             <details>
               <summary>查看期望与实际结果</summary>

@@ -26,6 +26,7 @@
 - `evaluate_comprehensive.py --quick`：运行 50 项路由、Hybrid 拆分和 SQL 安全检查，不连接模型或数据库。
 - `evaluate_comprehensive.py`：增加 30 条真实 MySQL 参考 SQL 和 20 条本地 RAG 检索，共 100 项；不调用付费 LLM。
 - `evaluate_hybrid_live.py`：默认运行 5 条真实 DeepSeek Hybrid 抽样，同时比较 SQL 执行结果和制度引用；会产生付费模型调用。使用 `--case-id HYBRID-003` 聚焦重跑时写入独立报告，不覆盖默认五题基线。
+- `evaluate_challenges.py`：运行 4 条 SQL 边界、5 条 RAG 库外问题和 3 条 Prompt Injection 挑战；结果写入独立的 `challenge_eval_report.json`，失败样本会保留，不混入正常集主指标。
 - `archive_evaluation_run.py`：将当前 SQL/RAG/Hybrid 报告归档为不可覆盖的历史批次，附带数据集哈希、Git 状态和失败样本诊断；不调用模型。
 
 报告写入 Git 忽略的 `data/runtime`。脚本不得输出 Key，也不得把本机绝对路径写入可提交配置。

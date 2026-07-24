@@ -44,14 +44,17 @@ const previousRun = {
   branches: { sql: branch(0.6), rag: branch(0.6), hybrid: branch(0.6) },
 }
 
-test("shows the archived real baseline", async ({ page }) => {
+test("shows the expanded archived real batch", async ({ page }) => {
   await page.goto("/")
   await page.getByRole("button", { name: /评测结果/ }).click()
 
   await expect(page.getByRole("heading", { name: "评测结果" })).toBeVisible()
-  await expect(page.getByLabel("当前批次")).toHaveValue("v08-baseline-20260724")
-  await expect(page.getByText("26/26 端到端样本通过", { exact: true })).toBeVisible()
+  await expect(page.getByLabel("当前批次")).toHaveValue("v09-expanded-challenges-20260724")
+  await expect(page.getByText("52/55 端到端样本通过", { exact: true })).toBeVisible()
   await expect(page.getByText("100/100", { exact: true })).toBeVisible()
+  await expect(page.getByText("正常集、挑战集与已知限制", { exact: true })).toBeVisible()
+  await expect(page.getByText("10/12", { exact: true })).toBeVisible()
+  await expect(page.getByText(/SQL-SMOKE-026/)).toBeVisible()
   await expect(page.locator("article.evaluation-branch-card")).toHaveCount(3)
   await expect.poll(() =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
