@@ -2,9 +2,11 @@ import httpx
 import pytest
 
 from app.api.routes import chat as chat_module
+from app.api.routes import evaluation as evaluation_module
 from app.api.routes import metadata as metadata_module
 from app.core.errors import DatabaseQueryError
 from app.database.schema import SchemaCatalog, SchemaColumn
+from app.evaluation.reports import save_evaluation_run
 from app.graph import nodes
 from app.graph.persistence import open_checkpointer
 from app.graph.workflow import build_graph
@@ -84,6 +86,96 @@ async def test_policy_metadata_lists_eight_documents(client: httpx.AsyncClient) 
     assert len(documents) == 8
     assert all(document["section_count"] > 0 for document in documents)
     assert all(document["chunk_count"] > 0 for document in documents)
+
+
+@pytest.mark.asyncio
+async def test_policy_detail_returns_read_only_sections(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/v1/metadata/policies/POL-RETURN-001")
+
+    assert response.status_code == 200
+    detail = response.json()
+    assert detail["document_id"] == "POL-RETURN-001"
+    assert detail["title"] == "商品退换货处理规范"
+    assert len(detail["sections"]) > 0
+    assert all(section["title"] and section["content"] for section in detail["sections"])
+    assert "frontmatter" not in response.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_policy_detail_returns_404_for_unknown_document(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.get("/api/v1/metadata/policies/POL-UNKNOWN-999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "未找到制度文档。"
+
+
+@pytest.mark.asyncio
+async def test_evaluation_runs_return_summary_and_failure_details(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    run = {
+        "run_id": "run-api-001",
+        "label": "API 测试批次",
+        "generated_at": "2026-07-24T08:00:00+00:00",
+        "model": "test-model",
+        "dataset_version": "abc123",
+        "git_commit": "deadbee",
+        "workspace_state": "clean",
+        "total_cases": 1,
+        "total_passed": 0,
+        "overall_accuracy": 0.0,
+        "branches": {
+            branch: {
+                "passed": 0,
+                "total": 1 if branch == "sql" else 0,
+                "accuracy": 0.0,
+                "rejected": 0,
+                "rejection_rate": 0.0,
+                "total_tokens": 10 if branch == "sql" else 0,
+                "avg_tokens": 10.0 if branch == "sql" else 0.0,
+                "p50_latency_ms": 100.0 if branch == "sql" else None,
+                "p95_latency_ms": 100.0 if branch == "sql" else None,
+                "coverage": "测试覆盖",
+            }
+            for branch in ("sql", "rag", "hybrid")
+        },
+        "quality_gate": None,
+        "failures": [
+            {
+                "case_id": "SQL-FAIL-001",
+                "branch": "sql",
+                "failure_type": "result_mismatch",
+                "diagnosis": "结果不一致。",
+                "question": "失败问题",
+                "expected": {"row_count": 2},
+                "actual": {"row_count": 1},
+                "errors": [],
+                "generated_sql": "SELECT 1",
+                "total_tokens": 10,
+                "latency_ms": 100,
+            }
+        ],
+        "source_reports": ["sql_smoke_report.json"],
+        "notes": [],
+    }
+    run_directory = tmp_path / "runs"
+    save_evaluation_run(run, run_directory)
+    monkeypatch.setattr(evaluation_module, "_run_directory", lambda: run_directory)
+
+    history = await client.get("/api/v1/evaluation/runs")
+    detail = await client.get("/api/v1/evaluation/runs/run-api-001")
+    missing = await client.get("/api/v1/evaluation/runs/unknown")
+
+    assert history.status_code == 200
+    assert history.json()["runs"][0]["label"] == "API 测试批次"
+    assert "failures" not in history.json()["runs"][0]
+    assert detail.status_code == 200
+    assert detail.json()["failures"][0]["failure_type"] == "result_mismatch"
+    assert missing.status_code == 404
 
 
 @pytest.mark.asyncio

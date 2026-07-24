@@ -26,6 +26,7 @@
 - `evaluate_comprehensive.py --quick`：运行 50 项路由、Hybrid 拆分和 SQL 安全检查，不连接模型或数据库。
 - `evaluate_comprehensive.py`：增加 30 条真实 MySQL 参考 SQL 和 20 条本地 RAG 检索，共 100 项；不调用付费 LLM。
 - `evaluate_hybrid_live.py`：默认运行 5 条真实 DeepSeek Hybrid 抽样，同时比较 SQL 执行结果和制度引用；会产生付费模型调用。使用 `--case-id HYBRID-003` 聚焦重跑时写入独立报告，不覆盖默认五题基线。
+- `archive_evaluation_run.py`：将当前 SQL/RAG/Hybrid 报告归档为不可覆盖的历史批次，附带数据集哈希、Git 状态和失败样本诊断；不调用模型。
 
 报告写入 Git 忽略的 `data/runtime`。脚本不得输出 Key，也不得把本机绝对路径写入可提交配置。
 
@@ -34,3 +35,5 @@
 - 真实模式启动后，页面会分别请求 `/api/v1/health`、`/api/v1/metadata/schema` 和 `/api/v1/metadata/policies`，用于展示 API、经营数据库和制度知识库状态。
 - 访问 `http://localhost:8080/?demo=1` 可进入无网络、无数据库、零 Token 的演示模式；演示历史只保留在当前页面。
 - 历史结果回放通过 `/api/v1/sessions/{session_id}` 恢复，不会重新调用模型或重新执行 SQL。历史 SQL 快照最多包含前 100 行。
+- 评测结果页通过 `/api/v1/evaluation/runs` 和 `/api/v1/evaluation/runs/{run_id}` 读取批次。运行评测后执行 `python scripts/archive_evaluation_run.py --run-id <唯一批次名>`，再刷新页面的“评测结果”导航。
+- 前端 E2E 使用已安装的 Microsoft Edge，不下载浏览器二进制。启动 Docker Compose 后在 `frontend` 目录执行 `npm.cmd run test:e2e`，覆盖评测批次、失败样本、Schema 滚动、制度正文和新建会话历史。

@@ -1,6 +1,8 @@
 import type {
   ChatResponse,
   ChatTurn,
+  EvaluationRun,
+  PolicyDetailResponse,
   PolicyMetadataItem,
   SchemaMetadataResponse,
 } from "./types"
@@ -25,6 +27,72 @@ export const demoPolicyMetadata: PolicyMetadataItem[] = [
   section_count: Number(sectionCount),
   chunk_count: Number(chunkCount),
 }))
+
+export const demoPolicyDetails: Record<string, PolicyDetailResponse> = Object.fromEntries(
+  demoPolicyMetadata.map((policy) => [
+    policy.document_id,
+    {
+      document_id: policy.document_id,
+      title: policy.title,
+      version: policy.version,
+      effective_date: policy.effective_date,
+      source: policy.source,
+      sections: [
+        {
+          title: "演示说明",
+          content:
+            "这是无 Token 演示模式中的制度阅读示例。真实模式会从后端读取该制度的完整章节正文。",
+        },
+        {
+          title: "功能范围",
+          content:
+            "制度正文仅供只读查看，不提供在线编辑、删除或覆盖源文件的能力。",
+        },
+      ],
+    },
+  ]),
+)
+
+const demoEvaluationBranch = {
+  passed: 3,
+  total: 3,
+  accuracy: 1,
+  rejected: 0,
+  rejection_rate: 0,
+  total_tokens: 0,
+  avg_tokens: 0,
+  p50_latency_ms: 180,
+  p95_latency_ms: 260,
+  coverage: "演示样例，不调用模型",
+}
+
+export const demoEvaluationRun: EvaluationRun = {
+  run_id: "demo-evaluation",
+  label: "演示评测批次",
+  generated_at: "2026-07-24T00:00:00+00:00",
+  model: "demo-local",
+  dataset_version: "demo",
+  git_commit: null,
+  workspace_state: "demo",
+  total_cases: 9,
+  total_passed: 9,
+  overall_accuracy: 1,
+  branches: {
+    sql: demoEvaluationBranch,
+    rag: demoEvaluationBranch,
+    hybrid: demoEvaluationBranch,
+  },
+  quality_gate: {
+    passed: 9,
+    total: 9,
+    accuracy: 1,
+    duration_ms: 0,
+    categories: {},
+  },
+  failures: [],
+  source_reports: ["演示内置样例"],
+  notes: ["演示模式不读取真实评测报告，不调用模型，不消耗 Token。"],
+}
 
 export const demoSchemaMetadata: SchemaMetadataResponse = {
   tables: [

@@ -119,8 +119,85 @@ export interface PolicyMetadataResponse {
   documents: PolicyMetadataItem[]
 }
 
+export interface PolicySection {
+  title: string
+  content: string
+  page?: number | null
+}
+
+export interface PolicyDetailResponse {
+  document_id: string
+  title: string
+  version: string
+  effective_date: string
+  source: string
+  sections: PolicySection[]
+}
+
 export interface HealthResponse {
   status: string
   app: string
   environment: string
+}
+
+export type EvaluationBranch = "sql" | "rag" | "hybrid"
+
+export interface EvaluationBranchMetrics {
+  passed: number
+  total: number
+  accuracy: number
+  rejected: number
+  rejection_rate: number
+  total_tokens: number
+  avg_tokens: number
+  p50_latency_ms?: number | null
+  p95_latency_ms?: number | null
+  coverage: string
+}
+
+export interface EvaluationQualityGate {
+  passed: number
+  total: number
+  accuracy: number
+  duration_ms?: number | null
+  categories: Record<string, { passed: number; total: number; pass_rate: number }>
+}
+
+export interface EvaluationFailure {
+  case_id: string
+  branch: EvaluationBranch
+  failure_type: string
+  diagnosis: string
+  question: string
+  expected: Record<string, unknown>
+  actual: Record<string, unknown>
+  errors: string[]
+  generated_sql?: string | null
+  total_tokens?: number | null
+  latency_ms?: number | null
+}
+
+export interface EvaluationRunSummary {
+  run_id: string
+  label: string
+  generated_at: string
+  model: string
+  dataset_version: string
+  git_commit?: string | null
+  workspace_state: string
+  total_cases: number
+  total_passed: number
+  overall_accuracy: number
+  branches: Record<EvaluationBranch, EvaluationBranchMetrics>
+  quality_gate?: EvaluationQualityGate | null
+}
+
+export interface EvaluationRun extends EvaluationRunSummary {
+  failures: EvaluationFailure[]
+  source_reports: string[]
+  notes: string[]
+}
+
+export interface EvaluationRunListResponse {
+  runs: EvaluationRunSummary[]
 }

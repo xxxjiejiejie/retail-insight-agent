@@ -2,7 +2,10 @@ import axios from "axios"
 
 import type {
   ChatResponse,
+  EvaluationRun,
+  EvaluationRunListResponse,
   HealthResponse,
+  PolicyDetailResponse,
   PolicyMetadataResponse,
   SessionDeleteResponse,
   SessionHistoryResponse,
@@ -106,5 +109,24 @@ export async function getSchemaMetadata(): Promise<SchemaMetadataResponse> {
 
 export async function getPolicyMetadata(): Promise<PolicyMetadataResponse> {
   const response = await api.get<PolicyMetadataResponse>("/metadata/policies")
+  return response.data
+}
+
+export async function getPolicyDetail(documentId: string): Promise<PolicyDetailResponse> {
+  const response = await api.get<PolicyDetailResponse>(
+    `/metadata/policies/${encodeURIComponent(documentId)}`,
+  )
+  return response.data
+}
+
+export async function getEvaluationRuns(): Promise<EvaluationRunListResponse> {
+  const response = await api.get<EvaluationRunListResponse>("/evaluation/runs")
+  return response.data
+}
+
+export async function getEvaluationRun(runId: string): Promise<EvaluationRun> {
+  const response = await api.get<EvaluationRun>(
+    `/evaluation/runs/${encodeURIComponent(runId)}`,
+  )
   return response.data
 }

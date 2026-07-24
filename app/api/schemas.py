@@ -124,3 +124,78 @@ class PolicyMetadataItem(BaseModel):
 
 class PolicyMetadataResponse(BaseModel):
     documents: list[PolicyMetadataItem]
+
+
+class PolicySectionResponse(BaseModel):
+    title: str
+    content: str
+    page: int | None = None
+
+
+class PolicyDetailResponse(BaseModel):
+    document_id: str
+    title: str
+    version: str
+    effective_date: str
+    source: str
+    sections: list[PolicySectionResponse]
+
+
+class EvaluationBranchMetricsResponse(BaseModel):
+    passed: int
+    total: int
+    accuracy: float
+    rejected: int
+    rejection_rate: float
+    total_tokens: int
+    avg_tokens: float
+    p50_latency_ms: float | None = None
+    p95_latency_ms: float | None = None
+    coverage: str
+
+
+class EvaluationQualityGateResponse(BaseModel):
+    passed: int
+    total: int
+    accuracy: float
+    duration_ms: float | None = None
+    categories: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvaluationFailureResponse(BaseModel):
+    case_id: str
+    branch: str
+    failure_type: str
+    diagnosis: str
+    question: str
+    expected: dict[str, Any] = Field(default_factory=dict)
+    actual: dict[str, Any] = Field(default_factory=dict)
+    errors: list[str] = Field(default_factory=list)
+    generated_sql: str | None = None
+    total_tokens: float | None = None
+    latency_ms: float | None = None
+
+
+class EvaluationRunSummaryResponse(BaseModel):
+    run_id: str
+    label: str
+    generated_at: datetime
+    model: str
+    dataset_version: str
+    git_commit: str | None = None
+    workspace_state: str
+    total_cases: int
+    total_passed: int
+    overall_accuracy: float
+    branches: dict[str, EvaluationBranchMetricsResponse]
+    quality_gate: EvaluationQualityGateResponse | None = None
+
+
+class EvaluationRunResponse(EvaluationRunSummaryResponse):
+    failures: list[EvaluationFailureResponse] = Field(default_factory=list)
+    source_reports: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EvaluationRunListResponse(BaseModel):
+    runs: list[EvaluationRunSummaryResponse] = Field(default_factory=list)

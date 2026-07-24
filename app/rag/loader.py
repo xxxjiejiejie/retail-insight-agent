@@ -176,6 +176,15 @@ def load_policy_documents(directory: Path) -> list[PolicyDocument]:
     return documents
 
 
+def policy_document_sections(document: PolicyDocument) -> list[DocumentSection]:
+    if document.sections:
+        return list(document.sections)
+    return [
+        DocumentSection(title=title, content=content)
+        for title, content in _section_blocks(document.content)
+    ]
+
+
 def _section_blocks(content: str) -> list[tuple[str, str]]:
     current_section = "总则"
     current_lines: list[str] = []
@@ -235,11 +244,10 @@ def chunk_policy_document(
         raise ValueError("overlap_chars 必须大于等于 0 且小于 max_chars 的一半")
 
     chunks: list[DocumentChunk] = []
-    source_sections = (
-        [(section.title, section.content, section.page) for section in document.sections]
-        if document.sections
-        else [(section, text, None) for section, text in _section_blocks(document.content)]
-    )
+    source_sections = [
+        (section.title, section.content, section.page)
+        for section in policy_document_sections(document)
+    ]
     for section_index, (section, section_text, page) in enumerate(source_sections, 1):
         for part_index, part in enumerate(
             _split_text(section_text, max_chars, overlap_chars),

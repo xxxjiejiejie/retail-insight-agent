@@ -17,14 +17,15 @@ import {
 import { computed, defineAsyncComponent, nextTick, onMounted, ref } from "vue"
 
 import {
-  deleteSession,
   getHealth,
+  getPolicyDetail,
   getPolicyMetadata,
   getSchemaMetadata,
   getSessionHistory,
   streamQuestion,
 } from "./api"
 import {
+  demoPolicyDetails,
   demoPolicyMetadata,
   demoResponses,
   demoSchemaMetadata,
@@ -35,15 +36,22 @@ import type {
   ChatTurn,
   HealthResponse,
   Intent,
+  PolicyDetailResponse,
   PolicyMetadataItem,
   SchemaMetadataResponse,
 } from "./types"
 
 const SESSION_STORAGE_KEY = "retail-insight-session-id"
+const SESSION_INDEX_STORAGE_KEY = "retail-insight-session-index"
+const MAX_TRACKED_SESSIONS = 20
 const ChartPanel = defineAsyncComponent(() => import("./components/ChartPanel.vue"))
+const EvaluationDashboard = defineAsyncComponent(
+  () => import("./components/EvaluationDashboard.vue"),
+)
 
 type ResultTab = "overview" | "data" | "evidence" | "trace"
 type ServiceState = "checking" | "online" | "offline" | "demo"
+type WorkspaceView = "analysis" | "evaluation"
 
 const intentDetails: Record<Intent, { label: string; description: string }> = {
   sql: { label: "经营数据分析", description: "安全 Text-to-SQL" },
@@ -79,11 +87,37 @@ const examples = [
 
 const SESSION_ID_PATTERN = /^[A-Za-z0-9._-]{1,128}$/
 
+function trackedSessionIds(): string[] {
+  const raw = localStorage.getItem(SESSION_INDEX_STORAGE_KEY)
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (value): value is string => typeof value === "string" && SESSION_ID_PATTERN.test(value),
+    )
+  } catch {
+    return []
+  }
+}
+
+function rememberSession(session: string): void {
+  const sessions = [session, ...trackedSessionIds().filter((item) => item !== session)].slice(
+    0,
+    MAX_TRACKED_SESSIONS,
+  )
+  localStorage.setItem(SESSION_INDEX_STORAGE_KEY, JSON.stringify(sessions))
+}
+
 function currentSessionId(): string {
   const stored = localStorage.getItem(SESSION_STORAGE_KEY)
-  if (stored && SESSION_ID_PATTERN.test(stored)) return stored
+  if (stored && SESSION_ID_PATTERN.test(stored)) {
+    rememberSession(stored)
+    return stored
+  }
   const created = crypto.randomUUID()
   localStorage.setItem(SESSION_STORAGE_KEY, created)
+  rememberSession(created)
   return created
 }
 
@@ -98,11 +132,16 @@ const sessionId = ref(currentSessionId())
 const activeTab = ref<ResultTab>("overview")
 const copiedSql = ref(false)
 const selectedTurnId = ref<string | null>(null)
+const workspaceView = ref<WorkspaceView>("analysis")
 const isDemoMode = ref(new URLSearchParams(window.location.search).get("demo") === "1")
 const drawerKind = ref<"policies" | "schema" | null>(null)
 const drawerLoading = ref(false)
 const drawerError = ref("")
 const policyMetadata = ref<PolicyMetadataItem[]>([])
+const selectedPolicy = ref<PolicyDetailResponse | null>(null)
+const selectedPolicyRequest = ref<PolicyMetadataItem | null>(null)
+const policyDetailLoading = ref(false)
+const policyDetailError = ref("")
 const schemaMetadata = ref<SchemaMetadataResponse | null>(null)
 const health = ref<HealthResponse | null>(null)
 const healthLoading = ref(true)
@@ -252,11 +291,13 @@ function formatDate(value: string): string {
 }
 
 function applyExample(exampleQuery: string): void {
+  workspaceView.value = "analysis"
   query.value = exampleQuery
   window.scrollTo({ top: 0, behavior: "smooth" })
 }
 
 function reuseTurn(turn: ChatTurn): void {
+  workspaceView.value = "analysis"
   query.value = turn.query
   selectedTurnId.value = turn.turn_id
   result.value = {
@@ -278,10 +319,27 @@ function reuseTurn(turn: ChatTurn): void {
   window.scrollTo({ top: 0, behavior: "smooth" })
 }
 
+function goWorkspace(view: WorkspaceView): void {
+  workspaceView.value = view
+  closeMetadata()
+  window.scrollTo({ top: 0, behavior: "smooth" })
+}
+
 async function refreshHistory(): Promise<void> {
   if (isDemoMode.value) return
-  const response = await getSessionHistory(sessionId.value)
-  history.value = response.turns
+  rememberSession(sessionId.value)
+  const responses = await Promise.allSettled(
+    trackedSessionIds().map((trackedId) => getSessionHistory(trackedId)),
+  )
+  const successfulResponses = responses.flatMap((response) =>
+    response.status === "fulfilled" ? [response.value] : [],
+  )
+  if (successfulResponses.length === 0 && responses.length > 0) return
+  const turns = successfulResponses.flatMap((response) => response.turns)
+  const uniqueTurns = new Map(turns.map((turn) => [turn.turn_id, turn]))
+  history.value = [...uniqueTurns.values()].sort((left, right) =>
+    left.created_at.localeCompare(right.created_at),
+  )
 }
 
 async function checkHealth(): Promise<void> {
@@ -325,6 +383,9 @@ async function loadMetadata(kind: "policies" | "schema"): Promise<void> {
 }
 
 async function openMetadata(kind: "policies" | "schema"): Promise<void> {
+  selectedPolicy.value = null
+  selectedPolicyRequest.value = null
+  policyDetailError.value = ""
   drawerKind.value = kind
   drawerError.value = ""
   await loadMetadata(kind)
@@ -333,6 +394,36 @@ async function openMetadata(kind: "policies" | "schema"): Promise<void> {
 function closeMetadata(): void {
   drawerKind.value = null
   drawerError.value = ""
+  selectedPolicy.value = null
+  selectedPolicyRequest.value = null
+  policyDetailError.value = ""
+}
+
+async function openPolicyDetail(policy: PolicyMetadataItem): Promise<void> {
+  selectedPolicyRequest.value = policy
+  selectedPolicy.value = null
+  policyDetailError.value = ""
+  policyDetailLoading.value = true
+  try {
+    if (isDemoMode.value) {
+      const detail = demoPolicyDetails[policy.document_id]
+      if (!detail) throw new Error("演示制度正文暂时不可用。")
+      selectedPolicy.value = detail
+    } else {
+      selectedPolicy.value = await getPolicyDetail(policy.document_id)
+    }
+  } catch (reason) {
+    policyDetailError.value =
+      reason instanceof Error ? reason.message : "制度正文读取失败，请稍后重试。"
+  } finally {
+    policyDetailLoading.value = false
+  }
+}
+
+function closePolicyDetail(): void {
+  selectedPolicy.value = null
+  selectedPolicyRequest.value = null
+  policyDetailError.value = ""
 }
 
 function demoResponseFor(queryText: string): ChatResponse {
@@ -361,6 +452,9 @@ async function toggleDemoMode(event: Event): Promise<void> {
   isDemoMode.value = target.checked
   result.value = null
   selectedTurnId.value = null
+  selectedPolicy.value = null
+  selectedPolicyRequest.value = null
+  policyDetailError.value = ""
   activeTab.value = "overview"
   error.value = ""
   const url = new URL(window.location.href)
@@ -428,10 +522,10 @@ async function submit(): Promise<void> {
 async function clearSession(): Promise<void> {
   error.value = ""
   try {
-    if (!isDemoMode.value) await deleteSession(sessionId.value)
+    if (!isDemoMode.value) rememberSession(sessionId.value)
     sessionId.value = crypto.randomUUID()
     localStorage.setItem(SESSION_STORAGE_KEY, sessionId.value)
-    history.value = []
+    if (!isDemoMode.value) rememberSession(sessionId.value)
     demoHistory.value = []
     result.value = null
     query.value = ""
@@ -505,10 +599,25 @@ onMounted(async () => {
       </div>
 
       <nav class="primary-nav" aria-label="主导航">
-        <button class="nav-item active" type="button">
+        <button
+          class="nav-item"
+          :class="{ active: workspaceView === 'analysis' && !drawerKind }"
+          type="button"
+          @click="goWorkspace('analysis')"
+        >
           <DataAnalysis />
           <span>分析工作台</span>
           <span class="nav-indicator" />
+        </button>
+        <button
+          class="nav-item"
+          :class="{ active: workspaceView === 'evaluation' && !drawerKind }"
+          type="button"
+          @click="goWorkspace('evaluation')"
+        >
+          <TrendCharts />
+          <span>评测结果</span>
+          <small>历史</small>
         </button>
         <button class="nav-item" type="button" @click="openMetadata('policies')">
           <Document />
@@ -563,10 +672,12 @@ onMounted(async () => {
     <main class="workspace">
       <header class="topbar">
         <div>
-          <span class="topbar-kicker">智能经营中枢</span>
-          <strong>分析工作台</strong>
+          <span class="topbar-kicker">
+            {{ workspaceView === "analysis" ? "智能经营中枢" : "质量证据中心" }}
+          </span>
+          <strong>{{ workspaceView === "analysis" ? "分析工作台" : "评测结果" }}</strong>
         </div>
-        <div class="topbar-actions">
+        <div v-if="workspaceView === 'analysis'" class="topbar-actions">
           <span class="as-of-date"><span /> 数据截止 2026-06-30</span>
           <label class="mode-toggle">
             <input type="checkbox" :checked="isDemoMode" @change="toggleDemoMode" />
@@ -578,9 +689,12 @@ onMounted(async () => {
             新建会话
           </el-button>
         </div>
+        <div v-else class="topbar-actions">
+          <span class="as-of-date"><span /> READ-ONLY EVIDENCE</span>
+        </div>
       </header>
 
-      <div class="workspace-content">
+      <div v-if="workspaceView === 'analysis'" class="workspace-content">
         <div v-if="isDemoMode" class="demo-banner">
           <MagicStick />
           <div>
@@ -943,6 +1057,11 @@ onMounted(async () => {
           </div>
         </section>
       </div>
+      <EvaluationDashboard
+        v-else
+        class="workspace-content evaluation-workspace"
+        :demo="isDemoMode"
+      />
     </main>
 
     <button
@@ -969,7 +1088,10 @@ onMounted(async () => {
 
       <div class="drawer-summary">
         <CircleCheck />
-        <span v-if="drawerKind === 'policies'">只读目录 · {{ policyMetadata.length }} 份制度</span>
+        <span v-if="drawerKind === 'policies' && selectedPolicy">
+          正在阅读 · {{ selectedPolicy.document_id }} · v{{ selectedPolicy.version }}
+        </span>
+        <span v-else-if="drawerKind === 'policies'">只读目录 · {{ policyMetadata.length }} 份制度</span>
         <span v-else>只读 Schema · {{ schemaMetadata?.tables.length || 0 }} 张表</span>
       </div>
 
@@ -984,8 +1106,62 @@ onMounted(async () => {
         <button type="button" @click="drawerKind && openMetadata(drawerKind)">重新检查</button>
       </div>
 
+      <div v-else-if="policyDetailLoading" class="drawer-state" role="status">
+        <span class="drawer-spinner" />
+        <strong>正在读取制度正文</strong>
+        <p>仅从本地制度库读取，不会调用大模型。</p>
+      </div>
+      <div v-else-if="policyDetailError" class="drawer-state error-state">
+        <strong>暂时无法读取制度正文</strong>
+        <p>{{ policyDetailError }}</p>
+        <button
+          v-if="selectedPolicyRequest"
+          type="button"
+          @click="openPolicyDetail(selectedPolicyRequest)"
+        >
+          重新读取
+        </button>
+        <button type="button" @click="closePolicyDetail">返回制度目录</button>
+      </div>
+
+      <div
+        v-else-if="drawerKind === 'policies' && selectedPolicy"
+        class="metadata-list policy-detail"
+      >
+        <button class="policy-back" type="button" @click="closePolicyDetail">
+          <ArrowRight /> 返回制度目录
+        </button>
+        <article class="policy-document">
+          <div class="policy-document-head">
+            <span>{{ selectedPolicy.document_id }}</span>
+            <span>v{{ selectedPolicy.version }}</span>
+          </div>
+          <h3>{{ selectedPolicy.title }}</h3>
+          <p>{{ selectedPolicy.source }} · 生效日期 {{ selectedPolicy.effective_date }}</p>
+
+          <section
+            v-for="(section, sectionIndex) in selectedPolicy.sections"
+            :key="`${selectedPolicy.document_id}-${sectionIndex}`"
+            class="policy-section"
+          >
+            <div class="policy-section-meta">
+              <span>章节 {{ sectionIndex + 1 }}</span>
+              <span v-if="section.page">第 {{ section.page }} 页</span>
+            </div>
+            <h4>{{ section.title }}</h4>
+            <p>{{ section.content }}</p>
+          </section>
+        </article>
+      </div>
+
       <div v-else-if="drawerKind === 'policies'" class="metadata-list policy-catalog">
-        <article v-for="policy in policyMetadata" :key="policy.document_id" class="metadata-card">
+        <button
+          v-for="policy in policyMetadata"
+          :key="policy.document_id"
+          class="metadata-card policy-card"
+          type="button"
+          @click="openPolicyDetail(policy)"
+        >
           <div class="metadata-card-head">
             <span>{{ policy.document_id }}</span>
             <span>v{{ policy.version }}</span>
@@ -997,7 +1173,8 @@ onMounted(async () => {
             <span>{{ policy.chunk_count }} 个分块</span>
             <span>{{ policy.effective_date }}</span>
           </div>
-        </article>
+          <span class="policy-open-label">查看正文 <ArrowRight /></span>
+        </button>
         <div v-if="!policyMetadata.length" class="drawer-state">
           <strong>制度目录为空</strong>
         </div>

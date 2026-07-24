@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     )
     session_database_url: str = "sqlite+aiosqlite:///./data/runtime/sessions.db"
     history_result_rows: int = Field(default=100, ge=1, le=500)
+    evaluation_runs_path: str = "./data/runtime/evaluation_runs"
 
     vector_store: str = "chroma"
     policy_documents_path: str = "./data/documents"

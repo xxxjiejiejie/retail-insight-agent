@@ -284,6 +284,13 @@ Content-Type: application/json
 - `GET /api/v1/sessions/{session_id}`：读取最近 20 轮；
 - `DELETE /api/v1/sessions/{session_id}`：删除指定会话，不影响其他会话。
 
+评测接口：
+
+- `GET /api/v1/evaluation/runs`：读取历史评测批次摘要；
+- `GET /api/v1/evaluation/runs/{run_id}`：读取指定批次的分支指标、失败样本和来源报告。
+
+运行 `python scripts/archive_evaluation_run.py --run-id <唯一批次名>` 可将当前 SQL/RAG/Hybrid 报告归档到 `data/runtime/evaluation_runs`。前端“评测结果”页面展示准确率、拒答率、Token、P50/P95 延迟、失败样本和批次对比；当前报告覆盖数量会原样显示，不会补写缺失样本。
+
 ## 安全边界
 
 - 数据库使用只读账号；
