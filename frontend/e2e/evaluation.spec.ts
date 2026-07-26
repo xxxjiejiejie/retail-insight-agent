@@ -49,7 +49,7 @@ test("shows the expanded archived real batch", async ({ page }) => {
   await page.getByRole("button", { name: /评测结果/ }).click()
 
   await expect(page.getByRole("heading", { name: "评测结果" })).toBeVisible()
-  await expect(page.getByLabel("当前批次")).toHaveValue("v09-expanded-challenges-20260724")
+  await expect(page.getByLabel("当前批次")).toHaveValue("v10-deterministic-fixes-20260726")
   await expect(page.getByText("52/55 端到端样本通过", { exact: true })).toBeVisible()
   await expect(page.getByText("100/100", { exact: true })).toBeVisible()
   await expect(page.getByText("正常集、挑战集与已知限制", { exact: true })).toBeVisible()

@@ -13,6 +13,14 @@ from app.rag.models import RetrievedChunk
 from app.rag.prompts import RAG_SYSTEM_PROMPT, build_rag_user_prompt
 from app.rag.runtime import get_policy_reranker, get_policy_retriever
 
+ABSTENTION_PHRASES = (
+    "无法从现有制度确认",
+    "无法根据现有制度确认",
+    "现有制度无法确认",
+    "现有制度证据不足",
+    "无法可靠回答",
+)
+
 
 def _citation_payload(result: RetrievedChunk) -> dict[str, Any]:
     chunk = result.chunk
@@ -40,6 +48,11 @@ def _extract_citation_indices(answer: str, *, context_count: int) -> list[int]:
         if 1 <= index <= context_count and index not in indices:
             indices.append(index)
     return indices
+
+
+def _answer_abstains(answer: str) -> bool:
+    normalized = "".join(answer.split())
+    return any(phrase in normalized for phrase in ABSTENTION_PHRASES)
 
 
 def _failure_result(
@@ -152,6 +165,23 @@ async def handle_rag_question(
                 "rerank_ms": rerank_ms,
                 "retrieved_count": len(candidates),
                 "reranked_count": len(ranked),
+            },
+        )
+
+    if _answer_abstains(llm_result.content):
+        return _failure_result(
+            "现有制度证据不足，无法可靠回答。请补充相关制度文件或业务范围。",
+            error_code="RAG_ANSWER_ABSTAINED",
+            started=started,
+            metrics={
+                "retrieval_ms": retrieval_ms,
+                "rerank_ms": rerank_ms,
+                "retrieved_count": len(candidates),
+                "reranked_count": len(ranked),
+                "prompt_tokens": llm_result.prompt_tokens,
+                "completion_tokens": llm_result.completion_tokens,
+                "total_tokens": llm_result.total_tokens,
+                "llm_latency_ms": llm_result.latency_ms,
             },
         )
 

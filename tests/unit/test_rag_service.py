@@ -88,6 +88,23 @@ class FakeAnswerGenerator:
         )
 
 
+class FakeAbstainingAnswerGenerator:
+    async def generate_text(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 1_200,
+    ) -> LLMTextResponse:
+        return LLMTextResponse(
+            content="无法从现有制度确认。[1][2]均未涉及印章借用审批。",
+            prompt_tokens=80,
+            completion_tokens=20,
+            latency_ms=15.5,
+            model="test-model",
+        )
+
+
 @pytest.mark.asyncio
 async def test_returns_grounded_answer_citations_and_metrics() -> None:
     result_chunk = make_result()
@@ -154,3 +171,20 @@ async def test_refuses_when_reranker_score_is_too_low() -> None:
 
     assert result["errors"] == ["RAG_LOW_RELEVANCE"]
     assert "相关度不足" in result["answer"]
+
+
+@pytest.mark.asyncio
+async def test_normalizes_explicit_model_abstention_to_zero_citation_refusal() -> None:
+    results = [make_result(), make_other_result()]
+    result = await handle_rag_question(
+        "公司印章借用需要谁审批？",
+        retriever=FakeRetriever(results),
+        reranker=FakeReranker(results),
+        llm_client=FakeAbstainingAnswerGenerator(),
+    )
+
+    assert result["citations"] == []
+    assert result["retrieved_docs"] == []
+    assert result["errors"] == ["RAG_ANSWER_ABSTAINED"]
+    assert result["metrics"]["total_tokens"] == 100
+    assert "无法可靠回答" in result["answer"]

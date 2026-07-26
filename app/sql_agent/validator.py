@@ -106,7 +106,16 @@ def validate_read_only_sql(
                         if isinstance(selected, exp.Expr) and selected.alias_or_name
                     }
 
-            unqualified_column_pool = set().union(*source_columns.values())
+            selected_expressions = scope.expression.args.get("expressions") or []
+            projection_aliases = {
+                selected.alias
+                for selected in selected_expressions
+                if isinstance(selected, exp.Expr) and selected.alias
+            }
+            unqualified_column_pool = {
+                *set().union(*source_columns.values()),
+                *projection_aliases,
+            }
             for column in scope.columns:
                 column_name = column.name
                 if not column_name or column_name == "*":

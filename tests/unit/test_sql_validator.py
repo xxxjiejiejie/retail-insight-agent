@@ -96,3 +96,23 @@ def test_allows_order_by_select_alias() -> None:
         allowed_columns={"orders": {"store_id"}},
     )
     assert result.is_safe
+
+
+def test_allows_group_by_select_alias() -> None:
+    result = validate_read_only_sql(
+        "SELECT DAYNAME(order_date) AS day_of_week, COUNT(*) AS order_count "
+        "FROM orders GROUP BY day_of_week ORDER BY order_count DESC LIMIT 1",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"order_date"}},
+    )
+    assert result.is_safe
+
+
+def test_select_alias_does_not_hide_unknown_physical_column() -> None:
+    result = validate_read_only_sql(
+        "SELECT secret_value AS day_of_week FROM orders GROUP BY day_of_week",
+        allowed_tables={"orders"},
+        allowed_columns={"orders": {"order_date"}},
+    )
+    assert not result.is_safe
+    assert any("secret_value" in error for error in result.errors)
