@@ -63,6 +63,16 @@ def test_split_hybrid_query_separates_data_and_policy_questions() -> None:
     assert rag_query == "销售目标完成率在绩效中的权重"
 
 
+def test_split_hybrid_query_applies_context_followup_to_both_branches() -> None:
+    sql_query, rag_query = nodes.split_hybrid_query(
+        "查询2026年6月各门店销售目标完成率，并说明绩效制度中的指标权重"
+        "；基于上一问题继续追问：换成五月呢"
+    )
+
+    assert sql_query.endswith("继续追问：换成五月呢")
+    assert rag_query.endswith("继续追问：换成五月呢")
+
+
 def test_persist_turn_node_keeps_bounded_result_snapshot() -> None:
     rows = [{"value": index} for index in range(105)]
     result = nodes.persist_turn_node(

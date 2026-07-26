@@ -178,10 +178,19 @@ export interface EvaluationKnownLimitation {
   status: string
 }
 
+export interface EvaluationImprovement {
+  id: string
+  title: string
+  problem: string
+  change: string
+  evidence: string
+  status: string
+}
+
 export interface EvaluationFailure {
   case_id: string
   branch: EvaluationBranch
-  set_type: "normal" | "challenge"
+  set_type: "normal" | "challenge" | "multi_turn" | "resilience"
   failure_type: string
   diagnosis: string
   question: string
@@ -204,9 +213,11 @@ export interface EvaluationRunSummary {
   total_cases: number
   total_passed: number
   overall_accuracy: number
+  failure_count?: number
   branches: Record<EvaluationBranch, EvaluationBranchMetrics>
   evaluation_sets?: Record<string, EvaluationSetMetrics>
   known_limitations?: EvaluationKnownLimitation[]
+  improvements?: EvaluationImprovement[]
   quality_gate?: EvaluationQualityGate | null
 }
 

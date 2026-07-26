@@ -127,7 +127,10 @@
   {
     "id": "SQL-SMOKE-026",
     "question": "2026年第二季度星期几的销售额最高？",
-    "reference_sql": "SELECT DAYOFWEEK(o.order_date) AS weekday_number, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM orders AS o JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY DAYOFWEEK(o.order_date) ORDER BY revenue DESC LIMIT 1"
+    "reference_sql": "SELECT DAYOFWEEK(o.order_date) AS weekday_number, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM orders AS o JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY DAYOFWEEK(o.order_date) ORDER BY revenue DESC LIMIT 1",
+    "comparison": {
+      "normalizers": ["weekday"]
+    }
   },
   {
     "id": "SQL-SMOKE-027",

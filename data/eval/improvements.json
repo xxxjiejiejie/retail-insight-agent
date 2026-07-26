@@ -1,0 +1,26 @@
+[
+  {
+    "id": "OPT-015",
+    "title": "SQL 结果语义比较",
+    "problem": "星期名称与星期编号语义等价却被判错，筛选条件中的恒定展示列缺失也会形成假阴性。",
+    "change": "引入显式比较配置、星期语义归一化和两位数值精度；比较规则随数据集归档，不按 case ID 特判。",
+    "evidence": "通过第三批次原失败 SQL 和完整 SQL/挑战集原样回归验证。",
+    "status": "verified"
+  },
+  {
+    "id": "OPT-016",
+    "title": "SQL 生成稳定性",
+    "problem": "Top-N 问题可能遗漏 LIMIT，模型响应可能携带额外说明或使用不同兼容格式。",
+    "change": "增加 Top-N 结构约束、修复 Prompt、JSON 对象提取、Anthropic/OpenAI 响应兼容解析，并将复杂 SQL 计划输出上限提高到 2400 Token。",
+    "evidence": "由完整 30 条真实 SQL 与格式异常故障恢复场景验证。",
+    "status": "verified"
+  },
+  {
+    "id": "OPT-017",
+    "title": "真实多轮与故障恢复证据",
+    "problem": "上下文追问此前只有单元测试，超时和格式异常缺少可展示的结构化报告。",
+    "change": "新增 8 组真实双轮 SQL/RAG/Hybrid 评测和 3 类确定性故障恢复报告。",
+    "evidence": "多轮集和故障集单独统计，不混入正常集准确率。",
+    "status": "verified"
+  }
+]

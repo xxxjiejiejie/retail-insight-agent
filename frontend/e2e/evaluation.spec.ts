@@ -24,7 +24,27 @@ const currentRun = {
   total_cases: 15,
   total_passed: 12,
   overall_accuracy: 0.8,
+  failure_count: 1,
   branches: { sql: branch(0.8), rag: branch(0.8), hybrid: branch(0.8) },
+  evaluation_sets: {
+    normal: { passed: 12, total: 15, accuracy: 0.8, categories: {}, description: "正常集" },
+    challenge: { passed: 3, total: 4, accuracy: 0.75, categories: {}, description: "挑战集" },
+    multi_turn: { passed: 2, total: 2, accuracy: 1, categories: {}, description: "多轮集" },
+    resilience: { passed: 3, total: 3, accuracy: 1, categories: {}, description: "故障集" },
+  },
+  improvements: [
+    {
+      id: "OPT-E2E",
+      title: "测试优化",
+      problem: "测试问题",
+      change: "测试改动",
+      evidence: "测试证据",
+      status: "verified",
+    },
+  ],
+  known_limitations: [
+    { id: "LIMIT-E2E", title: "测试限制", description: "测试限制说明", status: "open" },
+  ],
   quality_gate: {
     passed: 99,
     total: 100,
@@ -49,12 +69,15 @@ test("shows the expanded archived real batch", async ({ page }) => {
   await page.getByRole("button", { name: /评测结果/ }).click()
 
   await expect(page.getByRole("heading", { name: "评测结果" })).toBeVisible()
-  await expect(page.getByLabel("当前批次")).toHaveValue("v10-deterministic-fixes-20260726")
-  await expect(page.getByText("52/55 端到端样本通过", { exact: true })).toBeVisible()
+  await expect(page.getByLabel("当前批次")).toHaveValue("v11-multiturn-resilience-20260726")
+  await expect(page.getByText("55/55 端到端样本通过", { exact: true })).toBeVisible()
   await expect(page.getByText("100/100", { exact: true })).toBeVisible()
-  await expect(page.getByText("正常集、挑战集与已知限制", { exact: true })).toBeVisible()
-  await expect(page.getByText("10/12", { exact: true })).toBeVisible()
-  await expect(page.getByText(/SQL-SMOKE-026/)).toBeVisible()
+  await expect(page.getByText("正常集、挑战集与专项证据", { exact: true })).toBeVisible()
+  await expect(page.locator(".evaluation-set-summary.challenge").getByText("12/12", { exact: true })).toBeVisible()
+  await expect(page.locator(".evaluation-set-summary.multi-turn").getByText("8/8", { exact: true })).toBeVisible()
+  await expect(page.locator(".evaluation-set-summary.resilience > strong")).toHaveText("3/3")
+  await expect(page.getByText("本批次没有失败样本", { exact: true })).toBeVisible()
+  await expect(page.getByText("优化说明、指标变化与剩余限制", { exact: true })).toBeVisible()
   await expect(page.locator("article.evaluation-branch-card")).toHaveCount(3)
   await expect.poll(() =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
@@ -103,6 +126,7 @@ test("compares batches and expands deterministic failure analysis", async ({ pag
   const sqlCard = page.locator("article.evaluation-branch-card").filter({ hasText: "经营数据" })
   await expect(sqlCard.getByText("+20.0 个百分点", { exact: true })).toBeVisible()
   await expect(page.getByText(/SQL-FAIL-001/)).toBeVisible()
+  await expect(page.getByText("优化说明、指标变化与剩余限制", { exact: true })).toBeVisible()
   await page.getByText("查看期望与实际结果", { exact: true }).click()
   await expect(page.getByText(/"row_count": 2/)).toBeVisible()
   await expect(page.locator(".evaluation-history-table tbody tr")).toHaveCount(2)

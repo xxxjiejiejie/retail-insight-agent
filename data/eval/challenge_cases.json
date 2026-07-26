@@ -8,7 +8,10 @@
     {
       "id": "SQL-CH-002",
       "question": "2026年第二季度星期几的销售额最高？只返回最高的一项。",
-      "reference_sql": "SELECT DAYOFWEEK(o.order_date) AS weekday_number, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM orders AS o JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY DAYOFWEEK(o.order_date) ORDER BY revenue DESC LIMIT 1"
+      "reference_sql": "SELECT DAYOFWEEK(o.order_date) AS weekday_number, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM orders AS o JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY DAYOFWEEK(o.order_date) ORDER BY revenue DESC LIMIT 1",
+      "comparison": {
+        "normalizers": ["weekday"]
+      }
     },
     {
       "id": "SQL-CH-003",
@@ -18,7 +21,10 @@
     {
       "id": "SQL-CH-004",
       "question": "2026年6月30日库存数量为0的门店商品有哪些？",
-      "reference_sql": "SELECT s.store_name, p.product_name, i.stock_qty FROM inventory AS i JOIN stores AS s ON s.store_id = i.store_id JOIN products AS p ON p.product_id = i.product_id WHERE i.snapshot_date = '2026-06-30' AND i.stock_qty = 0 ORDER BY s.store_name, p.product_name"
+      "reference_sql": "SELECT s.store_name, p.product_name, i.stock_qty FROM inventory AS i JOIN stores AS s ON s.store_id = i.store_id JOIN products AS p ON p.product_id = i.product_id WHERE i.snapshot_date = '2026-06-30' AND i.stock_qty = 0 ORDER BY s.store_name, p.product_name",
+      "comparison": {
+        "ignore_reference_columns": ["stock_qty"]
+      }
     }
   ],
   "rag_out_of_scope": [

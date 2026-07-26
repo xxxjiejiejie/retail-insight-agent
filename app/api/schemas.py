@@ -177,6 +177,15 @@ class EvaluationKnownLimitationResponse(BaseModel):
     status: str
 
 
+class EvaluationImprovementResponse(BaseModel):
+    id: str
+    title: str
+    problem: str
+    change: str
+    evidence: str
+    status: str
+
+
 class EvaluationFailureResponse(BaseModel):
     case_id: str
     branch: str
@@ -203,9 +212,11 @@ class EvaluationRunSummaryResponse(BaseModel):
     total_cases: int
     total_passed: int
     overall_accuracy: float
+    failure_count: int = 0
     branches: dict[str, EvaluationBranchMetricsResponse]
     evaluation_sets: dict[str, EvaluationSetMetricsResponse] = Field(default_factory=dict)
     known_limitations: list[EvaluationKnownLimitationResponse] = Field(default_factory=list)
+    improvements: list[EvaluationImprovementResponse] = Field(default_factory=list)
     quality_gate: EvaluationQualityGateResponse | None = None
 
 

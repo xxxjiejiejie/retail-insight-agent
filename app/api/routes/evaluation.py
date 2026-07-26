@@ -21,7 +21,15 @@ def _run_directory() -> Path:
 async def get_evaluation_runs() -> EvaluationRunListResponse:
     try:
         runs = load_evaluation_runs(_run_directory())
-        summaries = [EvaluationRunSummaryResponse.model_validate(run) for run in runs]
+        summaries = [
+            EvaluationRunSummaryResponse.model_validate(
+                {
+                    **run,
+                    "failure_count": len(run.get("failures", [])),
+                }
+            )
+            for run in runs
+        ]
     except (OSError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

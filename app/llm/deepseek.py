@@ -60,6 +60,7 @@ class DeepSeekAnthropicClient:
         payload = {
             "model": self._settings.llm_model,
             "max_tokens": max_tokens,
+            "temperature": 0,
             "system": system,
             "messages": [{"role": "user", "content": user}],
         }
@@ -74,25 +75,40 @@ class DeepSeekAnthropicClient:
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             raise IntegrationError(f"DeepSeek API 返回 HTTP {status}") from exc
+        except httpx.TimeoutException as exc:
+            raise IntegrationError("DeepSeek API 请求超时") from exc
         except httpx.HTTPError as exc:
             raise IntegrationError("无法连接 DeepSeek API") from exc
 
         try:
             body: dict[str, Any] = response.json()
             content_blocks = body.get("content", [])
-            text_parts = [
-                block.get("text", "")
-                for block in content_blocks
-                if isinstance(block, dict) and block.get("type") == "text"
-            ]
+            text_parts: list[str] = []
+            if isinstance(content_blocks, str):
+                text_parts.append(content_blocks)
+            elif isinstance(content_blocks, list):
+                text_parts.extend(
+                    str(block.get("text", ""))
+                    for block in content_blocks
+                    if isinstance(block, dict) and block.get("type") == "text"
+                )
+            choices = body.get("choices")
+            if not text_parts and isinstance(choices, list) and choices:
+                first_choice = choices[0]
+                if isinstance(first_choice, dict):
+                    message = first_choice.get("message")
+                    if isinstance(message, dict) and isinstance(message.get("content"), str):
+                        text_parts.append(message["content"])
             content = "".join(text_parts).strip()
             usage = body.get("usage", {})
             if not content:
                 raise ValueError("empty content")
             return LLMTextResponse(
                 content=content,
-                prompt_tokens=int(usage.get("input_tokens", 0)),
-                completion_tokens=int(usage.get("output_tokens", 0)),
+                prompt_tokens=int(usage.get("input_tokens", usage.get("prompt_tokens", 0))),
+                completion_tokens=int(
+                    usage.get("output_tokens", usage.get("completion_tokens", 0))
+                ),
                 latency_ms=round((perf_counter() - started) * 1000, 2),
                 model=str(body.get("model") or self._settings.llm_model),
             )

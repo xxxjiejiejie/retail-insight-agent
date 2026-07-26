@@ -51,3 +51,13 @@ def test_standalone_question_is_not_polluted_by_history() -> None:
 
     assert resolution.query == "2026年6月各门店销售额是多少？"
     assert resolution.used_context is False
+
+
+def test_resolves_filter_only_followup() -> None:
+    resolution = resolve_contextual_query(
+        "只看未达标门店",
+        [analytical_turn("2026年6月各门店销售目标完成率是多少？")],
+    )
+
+    assert resolution.used_context is True
+    assert "只看未达标门店" in resolution.query

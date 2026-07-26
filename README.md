@@ -1,6 +1,6 @@
 # Retail Insight Agent
 
-> 当前真实评测状态以文末“v1.0 确定性失败修复回归”和 `data/runtime/evaluation_runs/v10-deterministic-fixes-20260726.json` 为准：正常集 52/55，挑战集 10/12，失败样本 5 条。
+> 当前真实评测状态以文末“v1.1 SQL 稳定性与多轮故障回归”和 `data/runtime/evaluation_runs/v11-multiturn-resilience-20260726.json` 为准：正常集 55/55，挑战集 12/12，多轮 8/8，故障恢复 3/3。
 
 面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Clarify 或 General 分支。
 
@@ -28,7 +28,7 @@
 - 基础上下文追问解析：将“那华东呢”“换成五月”“这个制度的申诉期限呢”等短追问与最近一次分析问题组合，不增加额外 LLM 调用；
 - 统一 100 项本地评测：30 条 SQL 参考执行、20 条 RAG 召回/拒答、25 条路由、10 条 Hybrid 拆分和 15 条 SQL 安全边界；
 - SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
-- Python 3.12、91 个 pytest 用例（88 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
+- Python 3.12、102 个 pytest 用例（99 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
 
 v0.8 在不改变 SQL、RAG 和 Hybrid 核心链路的前提下补齐了展示闭环：
 
@@ -40,13 +40,13 @@ v0.8 在不改变 SQL、RAG 和 Hybrid 核心链路的前提下补齐了展示�
 当前真实评测结果：
 
 - 30/30 条参考 SQL 可通过安全校验并在真实 MySQL 执行；
-- 完整 30 条真实 DeepSeek Text-to-SQL 中 27/30 通过，3 条失败原样保留；
+- 完整 30 条真实 DeepSeek Text-to-SQL 通过 30/30；
 - 20/20 条本地 RAG 召回/拒答评测通过；
 - 17 条有答案题中纯向量与混合召回均为 17/17，当前小型题集尚未体现召回增益；
 - 100/100 项完整本地综合评测通过，两次运行约 23～28 秒，付费 LLM 调用为 0；
 - 20/20 条真实 DeepSeek RAG 评测通过，其中 17 条各返回正确制度引用，3 条库外问题零引用拒答；
 - 17 条有答案 RAG 题共使用 11025 Token，平均检索 59.06ms、重排 300.60ms、LLM 3111.78ms；
-- 5/5 条代表性真实 DeepSeek Hybrid 问题分别通过数据库结果与制度引用双重校验，本批次共使用 7672 Token。
+- 5/5 条代表性真实 DeepSeek Hybrid 问题分别通过数据库结果与制度引用双重校验，本批次共使用 4493 Token。
 - Docker 页面真实验收通过：SQL 问题展示 12 行数据、ECharts 图表与可审计 SQL；RAG 问题展示制度版本、章节、段落、原文与 99.6% 相关度；390px 视口无页面级横向溢出。
 
 评测集较小且全部为原创模拟场景，这些数字不能等同于生产环境准确率。
@@ -319,3 +319,14 @@ Content-Type: application/json
 - 评测页会单独展示正常集、挑战集、已知限制和历史批次；运行 `scripts/evaluate_challenges.py` 后，再用 `scripts/archive_evaluation_run.py --run-id <唯一批次名>` 归档。
 
 此前的 `v08-baseline-20260724` 和 `v09-expanded-challenges-20260724` 仍保留为历史批次，不能用新报告覆盖。
+
+## v1.1 SQL 稳定性与多轮故障回归
+
+当前可验证的第四批次为 `v11-multiturn-resilience-20260726`：
+
+- 正常集 55 条：SQL 30/30、RAG 20/20、Hybrid 5/5，合计 55/55；
+- 挑战集 12 条：SQL 边界 4/4、RAG 库外 5/5、Prompt Injection 3/3；
+- 真实双轮追问 8/8：SQL 5 组、RAG 2 组、Hybrid 1 组，单独统计，不混入正常集；
+- 故障恢复演示 3/3：LLM API 超时安全降级、LLM 格式异常自动重试、数据库超时安全失败；
+- 当前批次没有失败样本，但上一批次 `v10-deterministic-fixes-20260726` 的 5 条失败仍可在历史对比中查看；
+- 评测页新增优化说明、当前/对比批次指标变化、多轮和故障专项、已知限制详细描述。

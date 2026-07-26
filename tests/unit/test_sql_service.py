@@ -6,7 +6,13 @@ from app.core.errors import IntegrationError
 from app.database.schema import SchemaCatalog
 from app.llm.deepseek import LLMTextResponse
 from app.sql_agent.executor import QueryResult
-from app.sql_agent.service import handle_sql_question, parse_sql_plan, validate_chart_spec
+from app.sql_agent.service import (
+    handle_sql_question,
+    parse_sql_plan,
+    required_result_limit,
+    validate_chart_spec,
+    validate_question_constraints,
+)
 
 
 def test_parses_sql_plan_json() -> None:
@@ -18,6 +24,68 @@ def test_parses_sql_plan_json() -> None:
     )
     assert plan.sql.startswith("SELECT")
     assert plan.chart is not None
+
+
+def test_extracts_json_plan_surrounded_by_explanation() -> None:
+    plan = parse_sql_plan(
+        '查询计划如下：\n{"sql":"SELECT region FROM stores",'
+        '"explanation":"查询区域","chart":null}\n以上为只读查询。'
+    )
+
+    assert plan.sql == "SELECT region FROM stores"
+
+
+def test_detects_required_top_n_limit() -> None:
+    assert required_result_limit("销售额最高的5家门店") == 5
+    assert required_result_limit("星期几的销售额最高？") == 1
+    assert required_result_limit("各区域销售额是多少？") is None
+
+
+def test_rejects_extreme_query_without_exact_limit() -> None:
+    with pytest.raises(ValueError, match="LIMIT"):
+        validate_question_constraints(
+            "星期几的销售额最高？",
+            "SELECT DAYNAME(order_date), SUM(amount) FROM orders "
+            "GROUP BY DAYNAME(order_date) ORDER BY SUM(amount) DESC",
+        )
+
+    validate_question_constraints(
+        "星期几的销售额最高？",
+        "SELECT DAYNAME(order_date), SUM(amount) FROM orders "
+        "GROUP BY DAYNAME(order_date) ORDER BY SUM(amount) DESC LIMIT 1",
+    )
+
+
+def test_rejects_ambiguous_status_aggregation_shape() -> None:
+    with pytest.raises(ValueError, match="按区域聚合"):
+        validate_question_constraints(
+            "各区域完成订单和取消订单分别有多少",
+            "SELECT region, status, COUNT(*) FROM orders "
+            "GROUP BY region, status ORDER BY region",
+        )
+
+    with pytest.raises(ValueError, match="LEFT JOIN"):
+        validate_question_constraints(
+            "各商品类别的退货件次和售出明细数是多少",
+            "SELECT p.category, COUNT(oi.order_item_id) FROM products p "
+            "LEFT JOIN order_items oi ON oi.product_id = p.product_id "
+            "LEFT JOIN orders o ON o.order_id = oi.order_id",
+        )
+
+
+def test_rejects_percent_and_status_spelling_mistakes() -> None:
+    with pytest.raises(ValueError, match="百分数"):
+        validate_question_constraints(
+            "各商品类别的平均折扣率是多少",
+            "SELECT category, ROUND(AVG(discount), 2) FROM products GROUP BY category",
+        )
+
+    with pytest.raises(ValueError, match="cancelled"):
+        validate_question_constraints(
+            "各区域完成订单和取消订单分别有多少",
+            "SELECT region, SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) "
+            "FROM orders GROUP BY region",
+        )
 
 
 def test_rejects_chart_fields_not_in_query_result() -> None:

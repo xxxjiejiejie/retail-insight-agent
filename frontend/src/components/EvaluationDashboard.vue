@@ -54,6 +54,12 @@ const qualityCategories = computed(() =>
 const challengeCategories = computed(() =>
   Object.entries(selectedRun.value?.evaluation_sets?.challenge?.categories ?? {}),
 )
+const multiTurnCategories = computed(() =>
+  Object.entries(selectedRun.value?.evaluation_sets?.multi_turn?.categories ?? {}),
+)
+const resilienceCategories = computed(() =>
+  Object.entries(selectedRun.value?.evaluation_sets?.resilience?.categories ?? {}),
+)
 
 function percent(value: number | null | undefined): string {
   return value == null ? "--" : `${(value * 100).toFixed(1)}%`
@@ -94,6 +100,38 @@ function deltaLabel(value: number | null): string {
   if (value == null) return "无对比批次"
   if (value === 0) return "与对比批次持平"
   return `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)} 个百分点`
+}
+
+function evaluationSetDelta(setName: string): number | null {
+  const current = selectedRun.value?.evaluation_sets?.[setName]
+  const previous = comparisonRun.value?.evaluation_sets?.[setName]
+  if (!current || !previous) return null
+  return current.accuracy - previous.accuracy
+}
+
+function evaluationSetResult(setName: string): string {
+  const item = selectedRun.value?.evaluation_sets?.[setName]
+  return item ? `${item.passed}/${item.total}` : "--"
+}
+
+function failureDeltaLabel(): string {
+  if (!selectedRun.value || !comparisonRun.value) return "无对比批次"
+  const current = selectedRun.value.failure_count ?? selectedRun.value.failures.length
+  const previous = comparisonRun.value.failure_count
+  if (previous == null) return `${current} 条真实失败`
+  const delta = current - previous
+  if (delta === 0) return `与对比批次同为 ${current} 条`
+  return `${delta > 0 ? "+" : ""}${delta} 条，当前 ${current} 条`
+}
+
+function setTypeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    normal: "正常集",
+    challenge: "挑战集",
+    multi_turn: "多轮集",
+    resilience: "故障集",
+  }
+  return labels[value] ?? value
 }
 
 async function loadSelectedRun(): Promise<void> {
@@ -235,7 +273,7 @@ onMounted(refresh)
         <div class="evaluation-section-heading">
           <div>
             <span class="section-kicker">DATASET SCOPE</span>
-            <h2>正常集、挑战集与已知限制</h2>
+            <h2>正常集、挑战集与专项证据</h2>
           </div>
           <span>挑战集不改变主分支准确率</span>
         </div>
@@ -271,6 +309,84 @@ onMounted(refresh)
             <ul>
               <li v-for="item in selectedRun.known_limitations" :key="item.id">{{ item.title }}</li>
             </ul>
+          </article>
+          <article v-if="selectedRun.evaluation_sets.multi_turn?.total" class="evaluation-set-summary multi-turn">
+            <span class="evaluation-set-label">MULTI-TURN SET</span>
+            <strong>
+              {{ selectedRun.evaluation_sets.multi_turn.passed }}/{{ selectedRun.evaluation_sets.multi_turn.total }}
+            </strong>
+            <b>{{ percent(selectedRun.evaluation_sets.multi_turn.accuracy) }}</b>
+            <div class="evaluation-set-categories">
+              <span v-for="[name, item] in multiTurnCategories" :key="name">
+                {{ name }} <strong>{{ item.passed }}/{{ item.total }}</strong>
+              </span>
+            </div>
+            <p>{{ selectedRun.evaluation_sets.multi_turn.description }}</p>
+          </article>
+          <article v-if="selectedRun.evaluation_sets.resilience?.total" class="evaluation-set-summary resilience">
+            <span class="evaluation-set-label">RESILIENCE SET</span>
+            <strong>
+              {{ selectedRun.evaluation_sets.resilience.passed }}/{{ selectedRun.evaluation_sets.resilience.total }}
+            </strong>
+            <b>{{ percent(selectedRun.evaluation_sets.resilience.accuracy) }}</b>
+            <div class="evaluation-set-categories">
+              <span v-for="[name, item] in resilienceCategories" :key="name">
+                {{ name }} <strong>{{ item.passed }}/{{ item.total }}</strong>
+              </span>
+            </div>
+            <p>{{ selectedRun.evaluation_sets.resilience.description }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section
+        v-if="selectedRun.improvements?.length || selectedRun.known_limitations?.length"
+        class="evaluation-section evaluation-regression-section"
+      >
+        <div class="evaluation-section-heading">
+          <div>
+            <span class="section-kicker">OPTIMIZATION REGRESSION</span>
+            <h2>优化说明、指标变化与剩余限制</h2>
+          </div>
+          <span>{{ comparisonRun ? `对比 ${comparisonRun.label}` : "选择历史批次查看变化" }}</span>
+        </div>
+        <div class="evaluation-delta-grid">
+          <article>
+            <span>正常集</span>
+            <strong>{{ evaluationSetResult("normal") }}</strong>
+            <small>{{ deltaLabel(evaluationSetDelta("normal")) }}</small>
+          </article>
+          <article>
+            <span>挑战集</span>
+            <strong>{{ evaluationSetResult("challenge") }}</strong>
+            <small>{{ deltaLabel(evaluationSetDelta("challenge")) }}</small>
+          </article>
+          <article>
+            <span>真实多轮</span>
+            <strong>{{ evaluationSetResult("multi_turn") }}</strong>
+            <small>{{ comparisonRun?.evaluation_sets?.multi_turn ? deltaLabel(evaluationSetDelta("multi_turn")) : "本批次新增证据" }}</small>
+          </article>
+          <article>
+            <span>失败样本</span>
+            <strong>{{ selectedRun.failure_count ?? selectedRun.failures.length }}</strong>
+            <small>{{ failureDeltaLabel() }}</small>
+          </article>
+        </div>
+        <div v-if="selectedRun.improvements?.length" class="evaluation-improvement-grid">
+          <article v-for="item in selectedRun.improvements" :key="item.id">
+            <span>{{ item.id }}</span>
+            <h3>{{ item.title }}</h3>
+            <dl>
+              <div><dt>原问题</dt><dd>{{ item.problem }}</dd></div>
+              <div><dt>本次改动</dt><dd>{{ item.change }}</dd></div>
+              <div><dt>验证证据</dt><dd>{{ item.evidence }}</dd></div>
+            </dl>
+          </article>
+        </div>
+        <div v-if="selectedRun.known_limitations?.length" class="evaluation-limit-list">
+          <article v-for="item in selectedRun.known_limitations" :key="item.id">
+            <span>{{ item.id }}</span>
+            <div><strong>{{ item.title }}</strong><p>{{ item.description }}</p></div>
           </article>
         </div>
       </section>
@@ -342,7 +458,7 @@ onMounted(refresh)
                 <strong>{{ failure.case_id }} · {{ failure.diagnosis }}</strong>
                 <p>{{ failure.question }}</p>
               </div>
-              <small>{{ failure.set_type === "challenge" ? "挑战集" : "正常集" }} · {{ failure.failure_type }}</small>
+              <small>{{ setTypeLabel(failure.set_type) }} · {{ failure.failure_type }}</small>
             </div>
             <details>
               <summary>查看期望与实际结果</summary>

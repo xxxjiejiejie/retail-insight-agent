@@ -149,6 +149,9 @@ def test_builds_branch_metrics_and_deterministic_failures(tmp_path: Path) -> Non
     assert run["evaluation_sets"]["normal"]["total"] == 6
     assert run["evaluation_sets"]["challenge"]["total"] == 1
     assert run["evaluation_sets"]["challenge"]["categories"]["sql_boundary"]["passed"] == 1
+    assert run["evaluation_sets"]["multi_turn"]["total"] == 0
+    assert run["evaluation_sets"]["resilience"]["total"] == 0
+    assert run["failure_count"] == 3
     assert {failure["failure_type"] for failure in run["failures"]} == {
         "row_count_mismatch",
         "citation_missing",

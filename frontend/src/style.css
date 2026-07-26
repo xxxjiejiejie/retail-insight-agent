@@ -2064,6 +2064,16 @@ button.nav-item {
   background: #fffafa;
 }
 
+.evaluation-set-summary.multi-turn {
+  border-color: #cfdfe8;
+  background: #f7fbfd;
+}
+
+.evaluation-set-summary.resilience {
+  border-color: #d7e2ce;
+  background: #f8fcf5;
+}
+
 .evaluation-set-label {
   display: block;
   color: var(--brand);
@@ -2269,6 +2279,112 @@ button.nav-item {
 .evaluation-section-heading > span {
   color: #74867f;
   font-size: 9px;
+}
+
+.evaluation-delta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.evaluation-delta-grid article {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dce6e2;
+  border-radius: 8px;
+  background: #f9fbfa;
+}
+
+.evaluation-delta-grid span,
+.evaluation-delta-grid small {
+  display: block;
+  color: #74867f;
+  font-size: 9px;
+}
+
+.evaluation-delta-grid strong {
+  display: block;
+  margin: 7px 0 4px;
+  color: #29463d;
+  font: 700 20px "Cascadia Code", Consolas, monospace;
+}
+
+.evaluation-improvement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.evaluation-improvement-grid article {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #d9e5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.evaluation-improvement-grid article > span,
+.evaluation-limit-list article > span {
+  color: var(--brand);
+  font: 700 8px "Cascadia Code", Consolas, monospace;
+}
+
+.evaluation-improvement-grid h3 {
+  margin: 5px 0 12px;
+  color: #29463d;
+  font-size: 13px;
+}
+
+.evaluation-improvement-grid dl,
+.evaluation-improvement-grid dl div {
+  display: grid;
+  gap: 4px;
+}
+
+.evaluation-improvement-grid dl {
+  gap: 10px;
+  margin: 0;
+}
+
+.evaluation-improvement-grid dt {
+  color: #5d746c;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.evaluation-improvement-grid dd {
+  margin: 0;
+  color: #7e8d88;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.evaluation-limit-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.evaluation-limit-list article {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+  border-left: 3px solid #bd8f83;
+  background: #fffafa;
+}
+
+.evaluation-limit-list strong {
+  color: #5e4a46;
+  font-size: 10px;
+}
+
+.evaluation-limit-list p {
+  margin: 3px 0 0;
+  color: #8b716c;
+  font-size: 9px;
+  line-height: 1.5;
 }
 
 .evaluation-chart {
@@ -2696,6 +2812,11 @@ button.nav-item {
   }
 
   .evaluation-set-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .evaluation-delta-grid,
+  .evaluation-improvement-grid {
     grid-template-columns: 1fr;
   }
 

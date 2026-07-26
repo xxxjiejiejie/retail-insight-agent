@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass
 from time import perf_counter
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlglot import exp, parse_one
 
 from app.core.config import get_settings
 from app.core.errors import (
@@ -30,6 +32,59 @@ class SQLPlan:
     sql: str
     explanation: str
     chart: dict[str, str] | None
+
+
+TOP_N_PATTERN = re.compile(r"(?:最高|最低)的?\s*(\d+)|前\s*(\d+)")
+SINGLE_EXTREME_HINTS = ("星期几", "哪个", "哪家", "哪一", "什么", "一笔", "一项", "只返回")
+SQL_PLAN_MAX_TOKENS = 2_400
+
+
+def required_result_limit(query: str) -> int | None:
+    match = TOP_N_PATTERN.search(query)
+    if match:
+        return int(match.group(1) or match.group(2))
+    if ("最高" in query or "最低" in query) and any(
+        hint in query for hint in SINGLE_EXTREME_HINTS
+    ):
+        return 1
+    return None
+
+
+def validate_question_constraints(query: str, sql: str) -> None:
+    normalized_query = query.replace(" ", "")
+    normalized_sql = sql.casefold()
+    if "退货件次" in normalized_query and "售出明细数" in normalized_query:
+        if "left join orders" in normalized_sql:
+            raise ValueError("已完成订单明细统计不能使用 LEFT JOIN orders 绕过状态和日期过滤")
+        if "sum(oi.quantity)" in normalized_sql:
+            raise ValueError("售出明细数必须 COUNT(order_item_id)，不能 SUM(quantity)")
+    if "平均折扣率" in normalized_query:
+        if "avg(" in normalized_sql and "* 100" not in normalized_sql:
+            raise ValueError("平均折扣率必须使用 AVG(discount) * 100 转为百分数")
+    if "完成订单和取消订单分别" in normalized_query:
+        group_by_match = re.search(
+            r"group\s+by(.+?)(?:order\s+by|limit|$)", normalized_sql, re.DOTALL
+        )
+        if group_by_match and "status" in group_by_match.group(1):
+            raise ValueError("完成/取消订单分别统计必须按区域聚合，不能按订单状态分组展开")
+        if "case when" not in normalized_sql:
+            raise ValueError("完成/取消订单分别统计必须使用条件聚合返回两列")
+        if "canceled" in normalized_sql:
+            raise ValueError("订单取消状态必须使用 Schema 中的 cancelled 拼写")
+    required_limit = required_result_limit(query)
+    if required_limit is None:
+        return
+    statement = parse_one(sql, read="mysql")
+    if not statement.args.get("order"):
+        raise ValueError(f"问题要求排序后只返回 {required_limit} 项，但 SQL 缺少 ORDER BY")
+    limit = statement.args.get("limit")
+    limit_expression = limit.expression if isinstance(limit, exp.Limit) else None
+    if not isinstance(limit_expression, exp.Literal) or not limit_expression.is_int:
+        raise ValueError(f"问题要求只返回 {required_limit} 项，但 SQL 缺少明确 LIMIT")
+    if int(limit_expression.this) != required_limit:
+        raise ValueError(
+            f"问题要求只返回 {required_limit} 项，但 SQL 使用了 LIMIT {limit_expression.this}"
+        )
 
 
 def validate_chart_spec(
@@ -66,7 +121,23 @@ def parse_sql_plan(raw_content: str) -> SQLPlan:
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
         cleaned = "\n".join(lines[1:-1]).strip()
-    payload = json.loads(cleaned)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError as original_error:
+        decoder = json.JSONDecoder()
+        payload = None
+        for index, character in enumerate(cleaned):
+            if character != "{":
+                continue
+            try:
+                candidate, _ = decoder.raw_decode(cleaned[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict):
+                payload = candidate
+                break
+        if payload is None:
+            raise original_error
     if not isinstance(payload, dict):
         raise ValueError("SQL plan must be a JSON object")
     sql = payload.get("sql")
@@ -171,6 +242,7 @@ async def handle_sql_question(
             llm_result = await client.generate_text(
                 system=SQL_SYSTEM_PROMPT,
                 user=prompt,
+                max_tokens=SQL_PLAN_MAX_TOKENS,
             )
             prompt_tokens += llm_result.prompt_tokens
             completion_tokens += llm_result.completion_tokens
@@ -178,6 +250,7 @@ async def handle_sql_question(
             previous_output = llm_result.content
             plan = parse_sql_plan(llm_result.content)
             last_sql = plan.sql
+            validate_question_constraints(query, plan.sql)
             query_result = await execute_read_only_sql(plan.sql, schema, engine=engine)
         except IntegrationError as exc:
             return _failure_result(

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "MT-001",
+    "branch": "sql",
+    "base_question": "2026年第二季度各区域销售额是多少？",
+    "followup_question": "那华东呢",
+    "reference_sql": "SELECT s.region, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' AND s.region = '华东' GROUP BY s.region",
+    "comparison": {
+      "ignore_reference_columns": ["region"]
+    }
+  },
+  {
+    "id": "MT-002",
+    "branch": "sql",
+    "base_question": "2026年6月各门店销售额是多少？",
+    "followup_question": "换成五月",
+    "reference_sql": "SELECT s.store_name, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-05-01' AND o.order_date < '2026-06-01' GROUP BY s.store_id, s.store_name ORDER BY s.store_name"
+  },
+  {
+    "id": "MT-003",
+    "branch": "sql",
+    "base_question": "2026年6月各门店销售目标完成率是多少？",
+    "followup_question": "只看未达标门店",
+    "reference_sql": "SELECT s.store_name, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue, st.revenue_target FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id JOIN sales_targets AS st ON st.store_id = s.store_id AND st.target_month = '2026-06-01' WHERE o.status = 'completed' AND o.order_date >= '2026-06-01' AND o.order_date < '2026-07-01' GROUP BY s.store_id, s.store_name, st.revenue_target HAVING SUM(oi.quantity * oi.sale_price * (1 - oi.discount)) < st.revenue_target ORDER BY s.store_name"
+  },
+  {
+    "id": "MT-004",
+    "branch": "sql",
+    "base_question": "2026年第二季度各商品类别销售额是多少？",
+    "followup_question": "那最高的3个呢",
+    "reference_sql": "SELECT p.category, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)), 2) AS revenue FROM products AS p JOIN order_items AS oi ON oi.product_id = p.product_id JOIN orders AS o ON o.order_id = oi.order_id WHERE o.status = 'completed' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-07-01' GROUP BY p.category ORDER BY revenue DESC LIMIT 3"
+  },
+  {
+    "id": "MT-005",
+    "branch": "sql",
+    "base_question": "2026年6月30日库存少于10件的门店商品有哪些？",
+    "followup_question": "那华东呢",
+    "reference_sql": "SELECT s.store_name, p.product_name, i.stock_qty FROM inventory AS i JOIN stores AS s ON s.store_id = i.store_id JOIN products AS p ON p.product_id = i.product_id WHERE i.snapshot_date = '2026-06-30' AND i.stock_qty < 10 AND s.region = '华东' ORDER BY i.stock_qty, s.store_name, p.product_name"
+  },
+  {
+    "id": "MT-006",
+    "branch": "rag",
+    "base_question": "绩效结果有异议时如何处理？",
+    "followup_question": "这个制度的申诉期限呢",
+    "expected_document_ids": ["POL-PERFORMANCE-001"]
+  },
+  {
+    "id": "MT-007",
+    "branch": "rag",
+    "base_question": "普通商品无质量问题可以退货吗？",
+    "followup_question": "那线上订单呢",
+    "expected_document_ids": ["POL-RETURN-001"]
+  },
+  {
+    "id": "MT-008",
+    "branch": "hybrid",
+    "base_question": "查询2026年6月各门店销售目标完成率，并说明绩效制度中的指标权重。",
+    "followup_question": "换成五月呢",
+    "reference_sql": "SELECT s.store_name, ROUND(SUM(oi.quantity * oi.sale_price * (1 - oi.discount)) / st.revenue_target * 100, 2) AS completion_rate FROM stores AS s JOIN orders AS o ON o.store_id = s.store_id JOIN order_items AS oi ON oi.order_id = o.order_id JOIN sales_targets AS st ON st.store_id = s.store_id AND st.target_month = '2026-05-01' WHERE o.status = 'completed' AND o.order_date >= '2026-05-01' AND o.order_date < '2026-06-01' GROUP BY s.store_id, s.store_name, st.revenue_target ORDER BY s.store_name",
+    "expected_document_ids": ["POL-PERFORMANCE-001"]
+  }
+]

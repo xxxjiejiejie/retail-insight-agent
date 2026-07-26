@@ -105,6 +105,32 @@ def _challenge_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _supplementary_summary(
+    entries: list[dict[str, Any]],
+    *,
+    description: str,
+) -> dict[str, Any]:
+    passed = sum(bool(entry.get("passed")) for entry in entries)
+    categories: dict[str, dict[str, Any]] = {}
+    for category in sorted({str(entry.get("category") or "unknown") for entry in entries}):
+        category_entries = [
+            entry for entry in entries if str(entry.get("category") or "unknown") == category
+        ]
+        category_passed = sum(bool(entry.get("passed")) for entry in category_entries)
+        categories[category] = {
+            "passed": category_passed,
+            "total": len(category_entries),
+            "accuracy": round(category_passed / len(category_entries), 4),
+        }
+    return {
+        "passed": passed,
+        "total": len(entries),
+        "accuracy": round(passed / len(entries), 4) if entries else 0.0,
+        "categories": categories,
+        "description": description,
+    }
+
+
 def _failure_diagnosis(branch: str, entry: dict[str, Any]) -> tuple[str, str]:
     errors = _entry_errors(entry)
     if branch == "sql":
@@ -205,6 +231,45 @@ def _challenge_failure_sample(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _supplementary_failure_sample(entry: dict[str, Any]) -> dict[str, Any]:
+    set_type = str(entry.get("set_type") or "supplementary")
+    raw_metrics = entry.get("metrics")
+    metrics: dict[str, Any] = raw_metrics if isinstance(raw_metrics, dict) else {}
+    if set_type == "multi_turn":
+        expected = {
+            "context_used": True,
+            "intent": entry.get("branch"),
+            "sql_passed": True,
+            "document_ids": entry.get("expected_document_ids") or [],
+        }
+        actual = {
+            "context_used": bool(entry.get("context_passed")),
+            "intent_passed": bool(entry.get("intent_passed")),
+            "sql_passed": bool(entry.get("sql_passed")),
+            "document_ids": entry.get("cited_document_ids") or [],
+        }
+        diagnosis = "多轮追问的上下文、路由、SQL 结果或制度引用未全部通过。"
+    else:
+        expected = {"recovered_safely": True}
+        actual = {
+            "recovered_safely": bool(entry.get("passed")),
+            "recovery": entry.get("recovery"),
+        }
+        diagnosis = "故障恢复场景未满足安全降级或自动修复条件。"
+    return {
+        "case_id": str(entry.get("id") or "unknown"),
+        "branch": str(entry.get("branch") or "sql"),
+        "set_type": set_type,
+        "failure_type": str(entry.get("category") or f"{set_type}_failed"),
+        "diagnosis": diagnosis,
+        "question": str(entry.get("question") or ""),
+        "expected": expected,
+        "actual": actual,
+        "errors": _entry_errors(entry),
+        "generated_sql": entry.get("generated_sql"),
+        "total_tokens": _as_number(metrics.get("total_tokens")),
+        "latency_ms": _as_number(metrics.get("total_latency_ms")),
+    }
 def _dataset_version(eval_directory: Path) -> str:
     digest = hashlib.sha256()
     for path in sorted(eval_directory.glob("*.json")):
@@ -275,6 +340,30 @@ def _known_limitations(eval_directory: Path) -> list[dict[str, str]]:
     return limitations
 
 
+def _improvements(eval_directory: Path) -> list[dict[str, str]]:
+    path = eval_directory / "improvements.json"
+    if not path.exists():
+        return []
+    payload = _load_json(path)
+    if not isinstance(payload, list):
+        raise ValueError("优化说明必须是 JSON 数组")
+    improvements: list[dict[str, str]] = []
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        improvements.append(
+            {
+                "id": str(entry.get("id") or "unknown"),
+                "title": str(entry.get("title") or "未命名优化"),
+                "problem": str(entry.get("problem") or ""),
+                "change": str(entry.get("change") or ""),
+                "evidence": str(entry.get("evidence") or ""),
+                "status": str(entry.get("status") or "verified"),
+            }
+        )
+    return improvements
+
+
 def build_evaluation_run(
     *,
     project_root: Path,
@@ -294,6 +383,8 @@ def build_evaluation_run(
     rag_path = report_directory / "rag_eval_report.json"
     hybrid_default = report_directory / "hybrid_live_report.json"
     challenge_path = report_directory / "challenge_eval_report.json"
+    multiturn_path = report_directory / "multiturn_live_report.json"
+    resilience_path = report_directory / "resilience_eval_report.json"
     hybrid_paths = (
         [hybrid_default]
         if hybrid_default.exists()
@@ -307,6 +398,8 @@ def build_evaluation_run(
             hybrid_by_id[str(entry.get("id") or path.stem)] = entry
     hybrid_entries = list(hybrid_by_id.values())
     challenge_entries = _report_entries(challenge_path)
+    multiturn_entries = _report_entries(multiturn_path)
+    resilience_entries = _report_entries(resilience_path)
 
     branches = {
         "sql": _branch_summary(sql_entries, coverage="真实模型 SQL 结果比对"),
@@ -328,10 +421,23 @@ def build_evaluation_run(
         for entry in challenge_entries
         if not bool(entry.get("passed"))
     )
+    failures.extend(
+        _supplementary_failure_sample(entry)
+        for entries in (multiturn_entries, resilience_entries)
+        for entry in entries
+        if not bool(entry.get("passed"))
+    )
     total_cases = sum(branch["total"] for branch in branches.values())
     total_passed = sum(branch["passed"] for branch in branches.values())
     commit, workspace_state = _git_metadata(project_root)
-    source_paths = [sql_path, rag_path, *hybrid_paths, challenge_path]
+    source_paths = [
+        sql_path,
+        rag_path,
+        *hybrid_paths,
+        challenge_path,
+        multiturn_path,
+        resilience_path,
+    ]
     source_reports = [path.name for path in source_paths if path.exists()]
     notes = ["本地 100 项质量门禁不计入 SQL/RAG/Hybrid 端到端准确率。"]
     if len(sql_entries) < 30:
@@ -351,6 +457,7 @@ def build_evaluation_run(
         "total_cases": total_cases,
         "total_passed": total_passed,
         "overall_accuracy": round(total_passed / total_cases, 4) if total_cases else 0.0,
+        "failure_count": len(failures),
         "branches": branches,
         "evaluation_sets": {
             "normal": {
@@ -368,8 +475,17 @@ def build_evaluation_run(
                 "description": "SQL、RAG 与 Hybrid 端到端正常业务问题。",
             },
             "challenge": challenge_summary,
+            "multi_turn": _supplementary_summary(
+                multiturn_entries,
+                description="真实模型双轮上下文追问，单独统计，不混入正常集主准确率。",
+            ),
+            "resilience": _supplementary_summary(
+                resilience_entries,
+                description="LLM 超时、格式异常和数据库超时的确定性故障恢复演示。",
+            ),
         },
         "known_limitations": _known_limitations(eval_directory),
+        "improvements": _improvements(eval_directory),
         "quality_gate": _quality_gate(report_directory),
         "failures": failures,
         "source_reports": source_reports,

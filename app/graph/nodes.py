@@ -11,6 +11,7 @@ from app.rag.service import handle_rag_question
 from app.sql_agent.service import handle_sql_question
 
 HYBRID_SEPARATORS = ("并说明", "同时说明", "并依据", "并结合", "同时")
+CONTEXT_FOLLOWUP_MARKER = "；基于上一问题继续追问："
 
 
 def merge_hybrid_metrics(
@@ -61,12 +62,20 @@ def attach_context_metric(state: AgentState, result: dict) -> dict:
 
 
 def split_hybrid_query(query: str) -> tuple[str, str]:
+    followup = ""
+    base_query = query
+    if CONTEXT_FOLLOWUP_MARKER in query:
+        base_query, followup = query.split(CONTEXT_FOLLOWUP_MARKER, maxsplit=1)
     for separator in HYBRID_SEPARATORS:
-        if separator in query:
-            sql_query, rag_query = query.split(separator, maxsplit=1)
+        if separator in base_query:
+            sql_query, rag_query = base_query.split(separator, maxsplit=1)
             cleaned_sql = sql_query.strip(" ，,。；;？?")
             cleaned_rag = rag_query.strip(" ，,。；;？?")
             if cleaned_sql and cleaned_rag:
+                if followup:
+                    cleaned_followup = followup.strip(" ，,。；;？?")
+                    cleaned_sql = f"{cleaned_sql}；继续追问：{cleaned_followup}"
+                    cleaned_rag = f"{cleaned_rag}；继续追问：{cleaned_followup}"
                 return cleaned_sql, cleaned_rag
     return query, query
 

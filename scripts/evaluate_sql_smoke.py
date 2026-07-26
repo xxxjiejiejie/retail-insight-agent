@@ -41,7 +41,7 @@ async def evaluate(
     *,
     reuse_generated: bool = False,
 ) -> list[dict[str, Any]]:
-    cases: list[dict[str, str]] = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+    cases: list[dict[str, Any]] = json.loads(CASES_PATH.read_text(encoding="utf-8"))
     selected = [case for case in cases if case_ids is None or case["id"] in case_ids]
     if not selected:
         raise SystemExit("No SQL smoke cases matched the requested IDs")
@@ -72,7 +72,12 @@ async def evaluate(
             generated_result = generated.get("sql_result")
             reference = await execute_read_only_sql(case["reference_sql"], schema, engine=engine)
             passed = bool(
-                generated_result and result_values_match(generated_result["rows"], reference.rows)
+                generated_result
+                and result_values_match(
+                    generated_result["rows"],
+                    reference.rows,
+                    comparison=case.get("comparison"),
+                )
             )
             entry = {
                 "id": case["id"],

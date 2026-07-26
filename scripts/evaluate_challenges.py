@@ -49,7 +49,11 @@ async def _evaluate_sql_boundaries(
         reference = await execute_read_only_sql(case["reference_sql"], schema, engine=engine)
         passed = bool(
             generated_result
-            and result_values_match(generated_result["rows"], reference.rows)
+            and result_values_match(
+                generated_result["rows"],
+                reference.rows,
+                comparison=case.get("comparison"),
+            )
         )
         report.append(
             {
