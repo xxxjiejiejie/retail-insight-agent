@@ -4,14 +4,14 @@
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
-![Vue](https://img.shields.io/badge/Frontend-Vue%203-42B883?logo=vuedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-99%20passed%20%7C%203%20skipped-2ea44f)
+![Vue](<https://img.shields.io/badge/Frontend-Vue%203-42B883?logo=vuedotjs&logoColor=white>)
+![Tests](<https://img.shields.io/badge/tests-99%20passed%20%7C%203%20skipped-2ea44f>)
 
-当前真实评测批次：`v11-multiturn-resilience-20260726`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`。评测结果不等同于生产环境准确率，数据为原创模拟零售场景。可提交的指标摘要见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
+当前真实评测批次：`v11-multiturn-resilience-20260726`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`。评测结果不等同于生产环境准确率，数据为原创模拟零售场景。完整指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
 
 面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Clarify 或 General 分支。
 
-## 30 秒了解项目
+## 项目概述
 
 这个项目解决的是一个典型 AI 应用问题：企业用户不想写 SQL，也不想在制度文件里翻页，但答案又必须可验证、可追溯、可拒答。
 
@@ -25,19 +25,19 @@
 
 页面截图：分析工作台使用零 Token 演示模式；评测页、Schema 和制度抽屉来自真实本地运行模式，数据和评测报告均来自原创模拟环境：
 
-| 分析工作台 | v1.1 评测结果 |
-|---|---|
+| 分析工作台                                         | v1.1 评测结果                                         |
+| -------------------------------------------------- | ----------------------------------------------------- |
 | ![分析工作台](docs/screenshots/workbench-demo.png) | ![v1.1 评测结果](docs/screenshots/evaluation-v11.png) |
 
-| Schema 抽屉 | 制度知识库抽屉 |
-|---|---|
+| Schema 抽屉                                              | 制度知识库抽屉                                    |
+| -------------------------------------------------------- | ------------------------------------------------- |
 | ![经营数据库 Schema](docs/screenshots/schema-drawer.png) | ![制度知识库](docs/screenshots/policy-drawer.png) |
 
-完整演示顺序见 [5 分钟面试演示流程](docs/INTERVIEW_DEMO.md)。访问 `http://localhost:8080/?demo=1` 可进入零 Token 演示模式。
+访问 `http://localhost:8080/?demo=1` 可进入零 Token 演示模式。
 
 ## 当前版本：v1.1
 
-当前版本在 v0.8 的交互闭环基础上，补齐了真实评测、失败分析、多轮追问和故障恢复证据：
+当前版本在 v0.8 的交互闭环基础上，增加了真实评测、失败分析、多轮追问和故障恢复能力：
 
 - FastAPI `POST /api/v1/chat` 与 LangGraph 条件路由；
 - DeepSeek V4 Pro Anthropic 兼容客户端；
@@ -61,7 +61,7 @@
 - SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
 - Python 3.12、102 个 pytest 用例（99 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
 
-前端与演示闭环：
+前端交互与运行模式：
 
 - Checkpointer 保存每轮轻量结果快照，历史会话可恢复对应回答、SQL、表格、图表、引用和指标；SQL 历史行数最多保存前 100 行并保留原始总行数；
 - “经营数据库”和“制度知识库”提供只读元数据抽屉，分别查看真实表字段和 8 份制度目录；
@@ -78,7 +78,7 @@
 - 20/20 条真实 DeepSeek RAG 评测通过，其中 17 条有答案题返回制度引用，3 条库外问题零引用拒答；本批次使用 2,544 Token；
 - 5/5 条真实 DeepSeek Hybrid 问题通过数据库结果与制度引用双重校验，本批次使用 4,493 Token；
 - 8/8 组真实双轮追问通过：SQL 5 组、RAG 2 组、Hybrid 1 组；
-- 3/3 故障恢复演示通过：LLM API 超时、LLM 格式异常、数据库超时；
+- 3/3 故障恢复评测通过：LLM API 超时、LLM 格式异常、数据库超时；
 - 12/12 挑战集通过：SQL 边界、RAG 库外问题和 Prompt Injection；
 - Docker 页面真实验收通过：评测页展示正常/挑战/多轮/故障专项、优化说明、历史失败和已知限制；E2E `11 passed, 1 skipped`。
 
@@ -98,10 +98,11 @@
 ```mermaid
 flowchart LR
     Vue["Vue 3"] --> API["FastAPI"]
-    API --> Graph["LangGraph Router"]
-    Graph --> SQL["安全 Text-to-SQL"]
-    Graph --> RAG["制度 RAG"]
-    Graph --> Hybrid["Hybrid 拆分与并行"]
+    API --> Graph["LangGraph + Context Resolver"]
+    Graph --> Router["SQL / RAG / Hybrid / Clarify / General"]
+    Router --> SQL["安全 Text-to-SQL"]
+    Router --> RAG["制度 RAG"]
+    Router --> Hybrid["Hybrid 拆分与并行"]
     SQL --> MySQL[("MySQL 只读账号")]
     RAG --> Vector["BGE Small + Chroma"]
     RAG --> BM25["中文 BM25"]
@@ -112,6 +113,7 @@ flowchart LR
     SQL --> Answer
     Hybrid --> SQL
     Hybrid --> RAG
+    Graph --> Session[("AsyncSqliteSaver")]
 ```
 
 详细调用链见 [docs/architecture.md](docs/architecture.md)。
@@ -135,8 +137,7 @@ frontend/                Vue 3 前端
 prototype/               Streamlit 早期原型
 docs/
 ├── architecture.md      架构与调用链
-├── EVALUATION_V11.md     可提交的真实评测摘要
-├── INTERVIEW_DEMO.md     5 分钟面试演示流程
+├── EVALUATION_V11.md     v1.1 真实评测摘要
 └── screenshots/          GitHub 页面截图
 scripts/                 数据、索引、验证和评测脚本
 tests/                   单元与集成测试
@@ -204,6 +205,8 @@ python scripts/verify_database.py
 
 ### 制度索引
 
+当前支持开发者导入制度文档：把文件放入 `data/documents` 后运行索引脚本。项目尚未提供前端上传按钮、文件上传 API 或上传后自动索引任务。
+
 Markdown 直接在 YAML frontmatter 中声明元数据。PDF/DOCX 需要同目录、同完整文件名的侧车文件，例如 `return_policy.pdf.metadata.json`：
 
 ```json
@@ -236,8 +239,8 @@ $env:HF_HUB_OFFLINE="1"
 uvicorn app.main:app --reload
 ```
 
-- 文档：<http://localhost:8000/docs>
-- 健康检查：<http://localhost:8000/api/v1/health>
+- 文档：[http://localhost:8000/docs](http://localhost:8000/docs)
+- 健康检查：[http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
 
 ### 完整 Docker Compose（CPU RAG）
 
@@ -255,9 +258,9 @@ docker compose up -d --force-recreate api frontend
 docker compose ps
 ```
 
-Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 <http://localhost:8080>；API 为 <http://localhost:8000>。v0.6 CPU API 镜像实测约 494MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。当前 Docker 依赖分层的新缓存首次构建约 317.3 秒，紧接着的零变更构建全部命中缓存，约 2.7 秒完成；该数据仅代表同机热缓存场景。
+Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 [http://localhost:8080](http://localhost:8080)；API 为 [http://localhost:8000](http://localhost:8000)。CPU API 镜像实测约 494MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。当前 Docker 依赖分层的新缓存首次构建约 317.3 秒，紧接着的零变更构建全部命中缓存，约 2.7 秒完成；该数据仅代表同机热缓存场景。
 
-`data/runtime` 挂载到容器内同名目录，SQLite 会话数据库因此能跨 API 容器重启保留。会话只保留最近 20 轮轻量记录；当前路由和回答仍以本轮问题为主，尚未把历史摘要注入模型完成指代消解。
+`data/runtime` 挂载到容器内同名目录，SQLite 会话数据库因此能跨 API 容器重启保留。会话只保留最近 20 轮轻量记录；系统支持基于最近一次分析问题的短追问解析，复杂多实体指代和跨多轮摘要仍未实现。
 
 ### Vue
 
@@ -267,7 +270,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-访问 <http://localhost:5173>。图表由后端白名单 `chart_spec` 和真实 SQL 结果驱动，不使用生图模型。
+访问 [http://localhost:5173](http://localhost:5173)。图表由后端白名单 `chart_spec` 和真实 SQL 结果驱动，支持柱状图、折线图、饼图和数值轴散点图，不使用生图模型。
 
 ## 测试与评测
 
@@ -314,7 +317,7 @@ python scripts/verify_sql_references.py
 python scripts/evaluate_rag_retrieval.py
 python scripts/evaluate_comprehensive.py
 
-# 不调用外部模型：故障恢复演示
+# 不调用外部模型：故障恢复评测
 python scripts/evaluate_resilience.py
 
 # 真实模型评测：需要明确的 API Key 和外发授权
@@ -328,7 +331,7 @@ python scripts/evaluate_multiturn_live.py
 python scripts/archive_evaluation_run.py --run-id <unique-run-id> --label "<batch-label>"
 ```
 
-真实评测会把原创模拟问题、Schema 或制度检索片段发送至配置的模型 API；默认开发测试不调用付费模型。完整的 5 分钟讲解顺序见 [docs/INTERVIEW_DEMO.md](docs/INTERVIEW_DEMO.md)。
+真实评测会把原创模拟问题、Schema 或制度检索片段发送至配置的模型 API；默认开发测试不调用付费模型。
 
 ## API 示例
 
@@ -372,28 +375,4 @@ Content-Type: application/json
 
 ## 开源与归属
 
-项目采用 MIT License。参考项目、保留内容与重写原则见 [NOTICE.md](NOTICE.md)。制度文档和模拟经营数据为本项目公开演示用途，不包含真实企业隐私。
-## v1.0 确定性失败修复回归
-
-当前可验证的第三批次为 `v10-deterministic-fixes-20260726`，使用与第二批次相同的数据集原样回归：
-
-- 正常集 55 条：SQL 30 条（27/30）、RAG 20 条（20/20）、Hybrid 5 条（5/5），合计 52/55，准确率 94.55%。
-- 挑战集 12 条：SQL 边界 4 条、RAG 库外 5 条、Prompt Injection 3 条，合计 10/12；挑战集不混入正常集主准确率。
-- `RAG-CH-004` 从“明确拒答但携带无关引用”变为零引用拒答并通过；`SQL-CH-002` 原有的 `GROUP BY` 投影别名白名单误判已消失，SQL 可直接执行。
-- 本次 `SQL-CH-002` 仍因 `DAYNAME` 与参考查询 `DAYOFWEEK` 的表示差异未通过值比对；`SQL-CH-004` 因未返回过滤条件中恒为 0 的库存展示列未通过比对。两条新失败均如实保留，没有修改题目或参考答案。
-- 评测页会单独展示正常集、挑战集、已知限制和历史批次；运行 `scripts/evaluate_challenges.py` 后，再用 `scripts/archive_evaluation_run.py --run-id <唯一批次名>` 归档。
-
-此前的 `v08-baseline-20260724` 和 `v09-expanded-challenges-20260724` 仍保留为历史批次，不能用新报告覆盖。
-
-## v1.1 SQL 稳定性与多轮故障回归
-
-当前可验证的第四批次为 `v11-multiturn-resilience-20260726`：
-
-详细指标、Token、限制和复现命令见 [docs/EVALUATION_V11.md](docs/EVALUATION_V11.md)。
-
-- 正常集 55 条：SQL 30/30、RAG 20/20、Hybrid 5/5，合计 55/55；
-- 挑战集 12 条：SQL 边界 4/4、RAG 库外 5/5、Prompt Injection 3/3；
-- 真实双轮追问 8/8：SQL 5 组、RAG 2 组、Hybrid 1 组，单独统计，不混入正常集；
-- 故障恢复演示 3/3：LLM API 超时安全降级、LLM 格式异常自动重试、数据库超时安全失败；
-- 当前批次没有失败样本，但上一批次 `v10-deterministic-fixes-20260726` 的 5 条失败仍可在历史对比中查看；
-- 评测页新增优化说明、当前/对比批次指标变化、多轮和故障专项、已知限制详细描述。
+项目采用 MIT License。参考项目、保留内容与重写原则见 [NOTICE.md](NOTICE.md)。制度文档和模拟经营数据仅用于本地开发与功能验证，不包含真实企业隐私。

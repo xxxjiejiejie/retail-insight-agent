@@ -33,7 +33,7 @@
 
 ## 历史对比
 
-上一批次 `v10-deterministic-fixes-20260726`：正常集 `52/55`、挑战集 `10/12`，保留 5 条失败样本。v1.1 将这些可确定的问题修复后重新运行；当前批次没有失败样本，但历史失败仍保留在本地评测页用于回归和面试演示。
+上一批次 `v10-deterministic-fixes-20260726`：正常集 `52/55`、挑战集 `10/12`，保留 5 条失败样本。v1.1 将这些可确定的问题修复后重新运行；当前批次没有失败样本，但历史失败仍保留在本地评测页用于回归分析。
 
 ## 如何复现
 
@@ -49,7 +49,7 @@ python scripts/evaluate_resilience.py
 python scripts/archive_evaluation_run.py --run-id <unique-run-id> --label "<batch-label>"
 ```
 
-`evaluate_resilience.py` 使用确定性故障注入，不调用外部模型。完整页面演示见 [INTERVIEW_DEMO.md](INTERVIEW_DEMO.md)。
+`evaluate_resilience.py` 使用确定性故障注入，不调用外部模型。评测页可查看当前批次、历史批次、失败样本与指标变化。
 
 ## 仍存限制
 

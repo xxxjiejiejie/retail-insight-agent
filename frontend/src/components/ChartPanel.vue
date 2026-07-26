@@ -77,6 +77,50 @@ async function renderChart(): Promise<void> {
         },
       ],
     })
+  } else if (props.spec.type === "scatter") {
+    chart.setOption({
+      color: ["#168269"],
+      textStyle: commonTextStyle,
+      grid: { left: 18, right: 18, top: 28, bottom: 18, containLabel: true },
+      tooltip: {
+        trigger: "item",
+        borderWidth: 0,
+        backgroundColor: "#142c27",
+        textStyle: { color: "#fff" },
+        formatter: (params: { value?: unknown[] }) => {
+          const [xValue, yValue] = params.value ?? []
+          return `${props.spec!.x_field}: ${xValue ?? "—"}<br/>${props.spec!.y_field}: ${yValue ?? "—"}`
+        },
+      },
+      xAxis: {
+        type: "value",
+        name: props.spec.x_field,
+        nameLocation: "middle",
+        nameGap: 30,
+        axisLine: { lineStyle: { color: "#dfe7e4" } },
+        splitLine: { lineStyle: { color: "#edf2f0", type: "dashed" } },
+        axisLabel: { color: "#667a74" },
+      },
+      yAxis: {
+        type: "value",
+        name: props.spec.y_field,
+        nameLocation: "middle",
+        nameGap: 54,
+        splitLine: { lineStyle: { color: "#edf2f0", type: "dashed" } },
+        axisLabel: { color: "#667a74" },
+      },
+      series: [
+        {
+          type: "scatter",
+          data: rows.value.map((row) => [
+            numericValue(row[props.spec!.x_field]),
+            numericValue(row[props.spec!.y_field]),
+          ]),
+          symbolSize: 12,
+          itemStyle: { color: "#168269", opacity: 0.82 },
+        },
+      ],
+    })
   } else {
     chart.setOption({
       color: ["#168269"],

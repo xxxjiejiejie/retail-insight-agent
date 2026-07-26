@@ -1,124 +1,181 @@
-# v0.6 架构说明
+# v1.1 架构说明
+
+Retail Insight Agent 由 Vue 3 分析工作台、FastAPI API、LangGraph 工作流、MySQL 经营数据库和本地制度 RAG 组成。系统把自然语言问题路由到 SQL、RAG、Hybrid、Clarify 或 General 分支，并统一返回答案、数据、图表配置、制度引用和运行指标。
+
+## 系统总览
+
+```mermaid
+flowchart LR
+    User["用户"] --> Vue["Vue 3 + TypeScript"]
+    Vue -->|REST / SSE| API["FastAPI"]
+    API --> Graph["LangGraph Router"]
+    Graph --> Context["Context Resolver"]
+    Context --> SQL["SQL 分支"]
+    Context --> RAG["RAG 分支"]
+    Context --> Hybrid["Hybrid 分支"]
+    Context --> Clarify["Clarify / General"]
+    Hybrid --> SQL
+    Hybrid --> RAG
+
+    SQL --> MySQL[("MySQL 只读账号")]
+    RAG --> Chroma["Chroma + BGE Embedding"]
+    RAG --> BM25["中文 BM25"]
+    Chroma --> RRF["RRF 融合"]
+    BM25 --> RRF
+    RRF --> Reranker["BGE Reranker"]
+    Reranker --> LLM["DeepSeek"]
+    SQL --> LLM
+
+    Graph --> Checkpoint[("AsyncSqliteSaver")]
+    API --> Evaluation["评测批次与报告"]
+```
 
 ## 请求生命周期
 
-1. Vue 将持久化在浏览器本地的 `session_id` 与 `query` 发送到 `POST /api/v1/chat/stream`。
-2. FastAPI 创建 `AgentState`；若当前输入是短追问，Context Resolver 从最近一次 SQL/RAG/Hybrid turn 生成 `resolved_query`，再由 LangGraph 规则路由判断 SQL、RAG、Hybrid、Clarify 或 General。
-3. SQL 分支读取真实 Schema，由 DeepSeek 返回 JSON SQL 计划，经 SQLGlot 和白名单校验后用只读账号执行。
-4. RAG 分支并行执行 Chroma 向量召回与 BM25 关键词召回，经 RRF 融合出 12 个制度块；BGE Reranker 保留 5 个，再按相关度阈值筛选证据。
-5. DeepSeek 只能依据筛选后的上下文回答；服务解析答案中的 `[数字]`，仅返回实际使用的引用。
-6. Hybrid 分支先按“并说明/同时说明”等连接词拆分数据和制度子问题，再并行运行 SQL 与 RAG，最后合并答案、错误和指标。
-7. LangGraph 在公共终止节点追加一条轻量 turn，`AsyncSqliteSaver` 将图状态写入 `data/runtime/sessions.db`。
-8. FastAPI 通过 SSE 发送节点进度、心跳和统一结果；Vue 展示回答、SQL、表格、ECharts、引用、指标与最近 20 轮历史。
+1. Vue 将自然语言问题和保存在浏览器中的 `session_id` 发送到 `POST /api/v1/chat/stream`。
+2. FastAPI 创建本轮 `AgentState`，LangGraph 从对应 `thread_id` 恢复会话状态。
+3. `resolve_contextual_query` 判断输入是否为短追问；符合条件时，将其与最近一次 SQL、RAG 或 Hybrid 问题组合为 `resolved_query`，并记录 `context_used`。
+4. 确定性 Router 将问题分到 SQL、RAG、Hybrid、Clarify 或 General。
+5. SQL 分支查询真实 Schema、生成并校验 SQL，再用只读账号执行；RAG 分支完成混合检索、重排、证据筛选和带引用回答；Hybrid 分支并行运行 SQL 与 RAG。
+6. 公共 `persist_turn` 节点保存轻量结果快照，`AsyncSqliteSaver` 将图状态写入 `data/runtime/sessions.db`。
+7. FastAPI 通过 SSE 发送节点进度、心跳、最终结果和结束事件；Vue 展示结论、SQL、表格、ECharts 图表、引用和指标。
 
-## 会话与 SSE
+## 路由与上下文追问
+
+Router 使用可测试的确定性规则：
+
+- SQL：销售、订单、库存、趋势、排名、完成率等结构化数据问题；
+- RAG：制度、流程、审批、规则、申诉等知识问题；
+- Hybrid：同一问题同时包含数据指标和明确的制度依据；
+- Clarify：时间、对象或指标不足的短问题；
+- General：超出当前经营分析与制度问答范围的问题。
+
+上下文解析只处理带“那、这个、换成、刚才、只看、仅看、呢、怎么样”等特征的短追问，并仅引用最近一次分析类 turn。完整新问题保持独立；没有分析历史时，信息不足的问题进入 Clarify。
 
 ```text
-Vue localStorage session_id
-→ POST /chat/stream
-→ LangGraph thread_id
-→ route/branch/persist_turn 节点事件
-→ AsyncSqliteSaver
-→ SQLite sessions.db
-→ SSE result/done
-→ GET /sessions/{session_id} 恢复历史
+上一轮：2026年6月各区域销售额是多少？
+追问：那华东呢
+resolved_query：2026年6月各区域销售额是多少；基于上一问题继续追问：那华东呢
 ```
 
-每轮开始前会显式清空 SQL/RAG 分支临时字段，避免 Checkpointer 将上一轮 SQL、引用或澄清信息带入新分支。历史 reducer 只保留最近 20 轮，turn 不保存大体积 `sql_result`。Checkpointer 仍会保存图运行状态，因此当前 SQLite 方案定位为本地演示；生产环境应迁移到 Postgres 并增加保留策略。
-
-基础上下文解析仅处理带“那、这个、换成、刚才、呢、怎么样”等特征的短追问，并只引用最近一次分析类 turn。完整新问题保持独立；没有分析历史时短问题继续进入 Clarify。解析结果和 `context_used` 会进入 API 响应与会话记录，便于页面解释系统实际理解的问题。当前方案不额外调用 LLM，因此没有新增 Token；复杂代词、多实体指代和跨多轮总结仍属于后续工作。
-
-SSE 使用 POST + Fetch 流式读取，事件为 `start`、`node`、`heartbeat`、`result`、`error`、`done`。Nginx 关闭代理缓冲，长节点每 10 秒发送心跳。当前 DeepSeek 客户端不是 Token 流式客户端，因此系统只承诺节点级进度，不宣称逐 Token 生成。
+解析结果、`context_used` 和来源 turn ID 会进入 API 状态与会话记录。该方案不额外调用 LLM；复杂多实体指代、跨多轮约束合并和历史摘要压缩仍未实现。Hybrid 追问会把追加条件同时传给 SQL 与 RAG 子分支。
 
 ## Text-to-SQL
 
 ```text
 读取 MySQL Schema
-→ 注入数据截止日和字段说明
-→ DeepSeek JSON SQL 计划
+→ 注入数据截止日、表字段和业务口径
+→ DeepSeek 生成 JSON SQL Plan
+→ 问题约束检查（Top-N、状态枚举、聚合口径等）
 → SQLGlot AST 解析
-→ 写操作/危险函数拦截
-→ 物理表字段及 CTE/派生表输出字段校验
-→ LIMIT 收紧与超时
-→ 只读 MySQL 执行
-→ 表格与白名单 ECharts 配置
+→ 单条 SELECT / CTE 与危险节点检查
+→ 物理表、物理字段白名单校验
+→ CTE、派生表和投影别名校验
+→ LIMIT 收紧与数据库超时
+→ MySQL 只读执行
+→ 校验 chart_spec 字段
 ```
 
-失败时最多纠错 2 次。传给模型的只有必要校验或数据库错误，不包含密码、连接串和内部堆栈。
+SQL 计划包含 `sql`、`explanation` 和可选 `chart`。执行失败或计划格式异常时最多纠错 2 次；只把必要的安全校验或数据库错误发回模型，不包含密码、连接串和内部堆栈。数据库账号仅授予 SELECT 权限，并设置最大返回行数与执行超时。
+
+图表不由模型生成图片或执行绘图代码。后端仅接收 `bar`、`line`、`pie`、`scatter` 四种白名单类型，并要求 `x_field`、`y_field` 必须存在于真实 SQL 结果列中；前端再使用 ECharts 渲染。
 
 ## 制度 RAG
 
-### 索引
+### 文档导入与索引
 
 ```text
-Markdown / 文本型 PDF / DOCX
-→ frontmatter 或 JSON 元数据侧车
-→ 标题/页码/段落感知分块
+data/documents 中的 Markdown / 文本型 PDF / DOCX
+→ Markdown frontmatter 或 PDF/DOCX JSON 元数据侧车
+→ 标题、页码、段落感知分块
 → 稳定 chunk_id 与 paragraph_id
-→ 源文件与侧车 SHA-256 清单
-→ 仅删除/写入发生变化的 chunk
+→ 源文件和侧车文件 SHA-256 清单
+→ 增量删除 / 写入发生变化的 chunk
 → Chroma 向量索引 + BM25 语料
 ```
 
-当前 8 份制度产生 24 个块。PDF 页号进入 chunk 和引用；DOCX 的 Heading 样式形成章节，表格转为文本行。扫描版 PDF 不静默降级，提取不到文字时要求先做 OCR。模型、Chroma 和 BM25 均为本地运行；DeepSeek 只负责基于证据生成答案。
+当前导入方式是开发者将文件放入 `data/documents` 后运行 `python scripts/index_policies.py`，而不是在网页上传。Markdown 在 YAML frontmatter 中声明元数据；PDF/DOCX 使用同名 `.metadata.json` 侧车。PDF 页码进入引用，DOCX 的 Heading 样式形成章节，表格转为文本行。扫描版 PDF 没有 OCR，无法提取文字时会拒绝建索引并提示先做 OCR。
 
-增量索引清单与 BM25 语料位于 `data/runtime`，不进入 Git。正常索引比较源文件及侧车文件的 SHA-256：新建/修改文档只重新计算对应向量，删除文档会清理原 chunk。零变更运行不会加载 Embedding 模型；`--full-rebuild` 仅用于排障和索引格式迁移。
+增量索引比较源文件和侧车文件的 SHA-256：新增或修改文档只重算对应向量，删除文档会清理原有 chunk，零变更运行不会加载 Embedding 模型。`--full-rebuild` 只用于排障和索引格式迁移。
 
-### 查询
+### 检索与回答
 
 ```text
 用户问题
-→ Chroma 向量 Top 20 + BM25 Top 20
+→ BGE + Chroma 向量 Top 20
+→ 中文 BM25 Top 20
+→ 两路并行召回
 → RRF(k=60) 去重融合 Top 12
 → BGE Reranker Top 5
 → relevance_score >= 0.1
-→ 无证据则拒答
-→ DeepSeek 带 [数字] 回答
+→ 无足够证据时拒答
+→ DeepSeek 基于证据生成带 [数字] 引用的答案
 → 只返回答案实际使用的引用
 ```
 
-阈值 0.1 来自当前固定评测：跨章节相关片段最低约 0.1096，三条无答案问题最高约 0.069。扩展评测集或更换文档后必须重新校准，不能把该值视为通用常数。
+Embedding、Chroma、BM25 和 Reranker 均在本地运行；发送给 DeepSeek 的是筛选后的制度片段。当前阈值 0.1 来自固定评测集，更换文档或扩展题集后需要重新校准，不能视为通用常数。
 
-BM25 使用中文单字、相邻双字词和英文/数字词元，不依赖额外分词模型。RRF 只利用两路排名而非直接混合不可比的余弦分数和 BM25 分数。当前 17 条有答案题中，向量与融合召回均为 17/17；这只能说明没有回归，不能证明融合检索已经提高指标。
+## Hybrid 并行
 
-## 路由
+Hybrid 节点按“并说明、同时说明、并依据、并结合”等连接词拆分数据子问题和制度子问题，再通过 `asyncio.gather` 并行运行：
 
-当前使用确定性规则，因为可离线、延迟低且便于建立基线。路由测试覆盖 30 条 SQL 题、17 条有答案 RAG 题和 Hybrid 组合题。
-
-Hybrid 仅在同时存在数据指标和明确制度/组合线索时触发，避免“门店、订单、绩效”等实体词造成误路由。未来若引入 LLM Router，必须保留规则回退并比较准确率、成本和延迟。
-
-## 图表
-
-LLM 不生成图片，也不执行绘图代码。后端只允许：
-
-```json
-{
-  "type": "bar",
-  "title": "各区域销售额",
-  "x_field": "region",
-  "y_field": "revenue"
-}
+```text
+Hybrid 问题
+├─ SQL 子问题 → MySQL 结果 + chart_spec
+└─ RAG 子问题 → 制度答案 + citations
+        ↓
+合并回答、错误和 Token / 延迟指标
 ```
 
-字段必须存在于真实 SQL 结果中，再由 Vue 的 ECharts 渲染。
+当前合并方式是拼接两个分支答案，尚未增加第三次统一总结调用，因此不会引入额外一次 LLM 成本。
 
-## 指标
+## 会话持久化与 SSE
 
-统一响应可包含：
+```text
+Vue localStorage session_id
+→ POST /chat/stream
+→ LangGraph thread_id
+→ route / branch / persist_turn 节点
+→ AsyncSqliteSaver
+→ SQLite sessions.db
+→ SSE result / done
+→ GET /sessions/{session_id} 恢复最近 20 轮
+```
 
-- LLM prompt/completion/total Token；
-- LLM、SQL、检索、重排和总耗时；
-- SQL 尝试次数；
-- 召回数、重排数、有效证据数和引用数；
-- SQL、RAG 与 Hybrid 分支耗时。
+每轮开始时会显式清空 SQL/RAG 临时字段，避免上一轮结果进入新分支。会话最多保留最近 20 轮轻量记录；SQL 历史只保存前 100 行并保留原始总行数。当前 SQLite Checkpointer 适合单机开发，生产部署应迁移到外部持久化存储并补充生命周期管理。
 
-首次请求总耗时会包含本地 Embedding/Reranker 模型加载，常驻 FastAPI 后后续请求复用单例。
+SSE 事件包括 `start`、`node`、`heartbeat`、`result`、`error` 和 `done`。Nginx 关闭代理缓冲，长节点每 10 秒发送心跳。这里提供的是 LangGraph 节点级进度，不是逐 Token 流式生成。
 
-## 当前技术债
+## 评测与可观测性
 
-- 已支持基础省略式追问，但尚未实现复杂多实体指代、历史摘要压缩和跨多轮约束合并；
-- PDF 当前仅支持文本型文件，扫描件尚未接入 OCR；
-- Hybrid 目前合并两个分支答案，尚未增加第三次统一总结调用；
-- 已提供 CPU RAG API 的完整 Compose 镜像，并从主机只读挂载模型缓存；GPU 推理仍通过主机 Python 环境运行，尚未提供 NVIDIA Container Toolkit 版镜像；
-- Vue 主包仍有约 732KB gzip 的分包优化空间；
-- 当前评测规模仍小，需要扩展到 50～100 条综合用例。
+评测数据分为四类：
+
+- 正常集：SQL、RAG、Hybrid；
+- 挑战集：SQL 边界、RAG 库外问题、Prompt Injection；
+- 多轮集：SQL、RAG、Hybrid 的真实双轮追问；
+- 故障恢复集：LLM 超时、LLM 格式异常、数据库超时。
+
+批次归档不可覆盖，并保留历史失败样本。评测页展示准确率、拒答率、Token、P50/P95 延迟、优化说明、指标变化和已知限制。响应级指标还可包含 SQL 尝试次数、召回数、重排数、有效证据数、引用数以及 SQL/RAG/Hybrid 分支耗时。
+
+## 部署
+
+Docker Compose 包含：
+
+- MySQL 8.4 与只读应用账号；
+- CPU 版 FastAPI API；
+- Nginx 托管的 Vue 前端；
+- 宿主机 BGE 模型缓存只读挂载与 Hugging Face 离线模式；
+- `data/runtime` 会话和评测数据持久化；
+- MySQL、API 健康检查与启动依赖。
+
+当前 Compose 以 CPU 可移植部署为目标；GPU RAG 仍通过宿主机 Python 环境运行，尚未提供 NVIDIA Container Toolkit 镜像。
+
+## 当前限制
+
+- 没有前端文件上传、上传 API 和上传后自动索引任务；
+- 扫描版 PDF 尚未接入 OCR；
+- 上下文解析不覆盖复杂多实体指代、长会话摘要和跨多轮约束合并；
+- Hybrid 没有第三次统一总结调用；
+- RAG 尚未使用独立裁判模型评估逐句事实一致性；
+- 认证、细粒度权限、审计、限流和线上监控不在当前离线实现范围；
+- 当前评测集为原创模拟数据，结果不能直接解释为生产环境准确率。
