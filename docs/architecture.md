@@ -28,6 +28,7 @@ flowchart LR
 
     Graph --> Checkpoint[("AsyncSqliteSaver")]
     API --> Evaluation["评测批次与报告"]
+    Graph -. 脱敏 Trace .-> LangSmith["LangSmith"]
 ```
 
 ## 请求生命周期
@@ -156,6 +157,18 @@ SSE 事件包括 `start`、`node`、`heartbeat`、`result`、`error` 和 `done`�
 - 故障恢复集：LLM 超时、LLM 格式异常、数据库超时。
 
 批次归档不可覆盖，并保留历史失败样本。评测页展示准确率、拒答率、Token、P50/P95 延迟、优化说明、指标变化和已知限制。响应级指标还可包含 SQL 尝试次数、召回数、重排数、有效证据数、引用数以及 SQL/RAG/Hybrid 分支耗时。
+
+### LangSmith 运行追踪
+
+LangSmith 是可选的外部运行可观测层，通过 `LANGSMITH_TRACING=true` 和本地 API Key 启用。每次 API 请求创建一棵 Trace，包含：
+
+- LangGraph Router、SQL、RAG、Hybrid、Clarify、General 和持久化节点；
+- DeepSeek LLM Span，包括模型、Token 和延迟；
+- `sql.execute` Span，包括 SQL、列名、行数和执行耗时；
+- `rag.retrieve` 与 `rag.rerank` Span，包括 Top-K、文档 ID、章节和分数；
+- `session_id`、环境、上下文追问标记、错误与分支指标。
+
+所有 Trace 使用同一个脱敏 Client。数据库 `rows` 在发送前替换为省略标记和行数；API Key、认证头、Cookie、连接串和密码统一替换为 `[REDACTED]`；Prompt 和制度片段按配置长度截断。LangSmith 不可用时不改变业务响应，但对应 Trace 可能缺失。
 
 ## 部署
 

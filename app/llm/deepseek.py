@@ -9,6 +9,7 @@ import httpx
 
 from app.core.config import Settings, get_settings
 from app.core.errors import ConfigurationError, IntegrationError, LLMResponseError
+from app.observability.langsmith import observe_llm
 
 
 @dataclass(slots=True, frozen=True)
@@ -47,6 +48,33 @@ class DeepSeekAnthropicClient:
         system: str,
         user: str,
         max_tokens: int = 1_200,
+    ) -> LLMTextResponse:
+        async with observe_llm(
+            system=system,
+            user=user,
+            model=self._settings.llm_model,
+            max_tokens=max_tokens,
+        ) as span:
+            result = await self._generate_text(
+                system=system,
+                user=user,
+                max_tokens=max_tokens,
+            )
+            await span.end(
+                content=result.content,
+                model=result.model,
+                prompt_tokens=result.prompt_tokens,
+                completion_tokens=result.completion_tokens,
+                latency_ms=result.latency_ms,
+            )
+            return result
+
+    async def _generate_text(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int,
     ) -> LLMTextResponse:
         if not self._settings.llm_api_key:
             raise ConfigurationError("尚未在 .env 中配置 LLM_API_KEY")

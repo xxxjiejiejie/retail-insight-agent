@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.deepseek.com/anthropic"
     llm_api_key: str = Field(default="", repr=False)
 
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = Field(default="", repr=False)
+    langsmith_project: str = "retail-insight-agent-dev"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_max_string_length: int = Field(default=2_000, ge=200, le=20_000)
+    langsmith_policy_excerpt_length: int = Field(default=600, ge=100, le=5_000)
+
     database_url: str = (
         "mysql+aiomysql://retail_readonly:readonly-local-dev@localhost:3307/retail_insight"
     )
@@ -56,6 +63,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def langsmith_enabled(self) -> bool:
+        return self.langsmith_tracing and bool(self.langsmith_api_key)
 
 
 @lru_cache

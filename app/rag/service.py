@@ -8,6 +8,7 @@ from typing import Any
 from app.core.config import get_settings
 from app.core.errors import ConfigurationError, IntegrationError, RetailInsightError
 from app.llm.deepseek import TextGenerator, get_llm_client
+from app.observability.langsmith import observe_chain
 from app.rag.interfaces import PolicyReranker, PolicyRetriever
 from app.rag.models import RetrievedChunk
 from app.rag.prompts import RAG_SYSTEM_PROMPT, build_rag_user_prompt
@@ -96,10 +97,30 @@ async def handle_rag_question(
 
     retrieval_started = perf_counter()
     try:
-        candidates = await active_retriever.retrieve(
-            query,
-            top_k=settings.rag_retrieval_top_k,
-        )
+        async with observe_chain(
+            "rag.retrieve",
+            inputs={"query": query, "top_k": settings.rag_retrieval_top_k},
+            tags=["rag", "retriever"],
+        ) as retrieval_span:
+            candidates = await active_retriever.retrieve(
+                query,
+                top_k=settings.rag_retrieval_top_k,
+            )
+            await retrieval_span.end(
+                {
+                    "retrieved_count": len(candidates),
+                    "documents": [
+                        {
+                            "chunk_id": item.chunk.chunk_id,
+                            "document_id": item.chunk.document_id,
+                            "title": item.chunk.title,
+                            "section": item.chunk.section,
+                            "score": round(item.score, 6),
+                        }
+                        for item in candidates
+                    ],
+                }
+            )
     except RetailInsightError as exc:
         return _failure_result(
             f"制度检索暂时不可用：{exc}",
@@ -118,11 +139,33 @@ async def handle_rag_question(
 
     rerank_started = perf_counter()
     try:
-        ranked = await active_reranker.rerank(
-            query,
-            candidates,
-            top_k=settings.rag_rerank_top_k,
-        )
+        async with observe_chain(
+            "rag.rerank",
+            inputs={
+                "query": query,
+                "candidate_count": len(candidates),
+                "top_k": settings.rag_rerank_top_k,
+            },
+            tags=["rag", "reranker"],
+        ) as rerank_span:
+            ranked = await active_reranker.rerank(
+                query,
+                candidates,
+                top_k=settings.rag_rerank_top_k,
+            )
+            await rerank_span.end(
+                {
+                    "reranked_count": len(ranked),
+                    "documents": [
+                        {
+                            "chunk_id": item.chunk.chunk_id,
+                            "document_id": item.chunk.document_id,
+                            "score": round(item.score, 6),
+                        }
+                        for item in ranked
+                    ],
+                }
+            )
     except RetailInsightError as exc:
         return _failure_result(
             f"制度证据重排暂时不可用：{exc}",

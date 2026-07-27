@@ -41,6 +41,7 @@
 
 - FastAPI `POST /api/v1/chat` 与 LangGraph 条件路由；
 - DeepSeek V4 Pro Anthropic 兼容客户端；
+- 可选 LangSmith 运行追踪：LangGraph 节点、DeepSeek、SQL 执行、RAG 召回与重排；
 - 安全 Text-to-SQL：Schema 注入、JSON 计划、SQLGlot AST、表字段白名单、危险函数拦截、LIMIT、超时、只读执行及最多 2 次纠错；
 - MySQL 8.4 模拟零售库：12 家门店、60 个商品、4000 笔订单、10005 条订单明细；
 - Markdown/PDF/DOCX 统一制度加载、标题感知分块、PDF 页码和稳定段落编号；
@@ -176,6 +177,11 @@ LLM_BASE_URL=https://api.deepseek.com/anthropic
 LLM_API_KEY=仅在本机填写新密钥
 DATA_AS_OF_DATE=2026-06-30
 
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=仅在本机填写 LangSmith 密钥
+LANGSMITH_PROJECT=retail-insight-agent-dev
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+
 MODEL_CACHE_PATH=./data/runtime/model_cache
 HOST_MODEL_CACHE_PATH=./data/runtime/model_cache
 MODEL_LOCAL_FILES_ONLY=false
@@ -190,6 +196,8 @@ RAG_RRF_K=60
 首次索引/模型验证完成后可把 `MODEL_LOCAL_FILES_ONLY` 改为 `true`，避免已缓存模型启动时仍访问 Hugging Face。模型缓存也可以放到仓库外的其他磁盘目录。
 
 如果 Key 曾出现在聊天、截图、日志或 Git 历史中，必须撤销并重新生成。
+
+LangSmith 默认关闭，只有同时配置 `LANGSMITH_TRACING=true` 和 `LANGSMITH_API_KEY` 才会发送追踪。追踪会记录 LangGraph 节点、模型调用、SQL、RAG 召回和重排；发送前统一删除密钥、请求头、连接串和数据库结果明细，制度内容按长度截断。不同环境建议使用独立项目名，例如 `retail-insight-agent-dev` 和 `retail-insight-agent-evaluation`。
 
 ## 运行
 
@@ -287,6 +295,7 @@ python -m pytest tests/integration/test_database.py
 
 ```powershell
 python scripts/verify_deepseek.py
+python scripts/verify_langsmith.py --live-llm
 python scripts/evaluate_sql_smoke.py
 python scripts/verify_rag_answer.py
 python scripts/evaluate_rag.py
@@ -331,7 +340,7 @@ python scripts/evaluate_multiturn_live.py
 python scripts/archive_evaluation_run.py --run-id <unique-run-id> --label "<batch-label>"
 ```
 
-真实评测会把原创模拟问题、Schema 或制度检索片段发送至配置的模型 API；默认开发测试不调用付费模型。
+真实评测会把原创模拟问题、Schema 或制度检索片段发送至配置的模型 API；默认开发测试不调用付费模型。`verify_langsmith.py --live-llm` 会向 LangSmith 发送脱敏隐私探针，并额外调用一次 DeepSeek，运行前同样需要明确外发授权。
 
 ## API 示例
 

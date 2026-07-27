@@ -19,6 +19,7 @@ from app.core.errors import (
 )
 from app.database.schema import load_schema_catalog
 from app.llm.deepseek import TextGenerator, get_llm_client
+from app.observability.langsmith import observe_chain
 from app.sql_agent.executor import execute_read_only_sql
 from app.sql_agent.prompts import (
     SQL_SYSTEM_PROMPT,
@@ -251,7 +252,21 @@ async def handle_sql_question(
             plan = parse_sql_plan(llm_result.content)
             last_sql = plan.sql
             validate_question_constraints(query, plan.sql)
-            query_result = await execute_read_only_sql(plan.sql, schema, engine=engine)
+            async with observe_chain(
+                "sql.execute",
+                inputs={"sql": plan.sql, "attempt": attempts},
+                tags=["sql", "database"],
+                metadata={"read_only": True},
+            ) as sql_span:
+                query_result = await execute_read_only_sql(plan.sql, schema, engine=engine)
+                await sql_span.end(
+                    {
+                        "columns": query_result.columns,
+                        "row_count": query_result.row_count,
+                        "execution_ms": query_result.execution_ms,
+                        "executed_sql": query_result.executed_sql,
+                    }
+                )
         except IntegrationError as exc:
             return _failure_result(
                 answer=str(exc),

@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api.schemas import ChatRequest, ChatResponse
 from app.graph.workflow import get_graph
+from app.observability.langsmith import trace_agent_request
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -65,10 +66,13 @@ def encode_sse(event: str, data: dict[str, Any]) -> str:
 async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
     graph = get_runtime_graph(request)
     state = initial_state(payload)
-    result = await graph.ainvoke(
-        state,
-        config={"configurable": {"thread_id": payload.session_id}},
-    )
+    base_config = {"configurable": {"thread_id": payload.session_id}}
+    with trace_agent_request(
+        session_id=payload.session_id,
+        query=payload.query,
+        config=base_config,
+    ) as (config, _):
+        result = await graph.ainvoke(state, config=config)
     return response_from_state(payload, result)
 
 
@@ -80,46 +84,55 @@ async def chat_stream(payload: ChatRequest, request: Request) -> StreamingRespon
     async def event_stream() -> AsyncIterator[str]:
         accumulated = initial_state(payload)
         yield encode_sse("start", {"session_id": payload.session_id})
-        iterator = graph.astream(accumulated, config=config, stream_mode="updates").__aiter__()
         next_update: asyncio.Task[Any] | None = None
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
-                if next_update is None:
-                    next_update = asyncio.create_task(anext(iterator))
-                done, _ = await asyncio.wait({next_update}, timeout=10)
-                if not done:
-                    yield encode_sse("heartbeat", {"status": "running"})
-                    continue
-                try:
-                    update = next_update.result()
-                except StopAsyncIteration:
-                    break
-                finally:
-                    next_update = None
+        with trace_agent_request(
+            session_id=payload.session_id,
+            query=payload.query,
+            config=config,
+        ) as (traced_config, _):
+            iterator = graph.astream(
+                accumulated,
+                config=traced_config,
+                stream_mode="updates",
+            ).__aiter__()
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    if next_update is None:
+                        next_update = asyncio.create_task(anext(iterator))
+                    done, _ = await asyncio.wait({next_update}, timeout=10)
+                    if not done:
+                        yield encode_sse("heartbeat", {"status": "running"})
+                        continue
+                    try:
+                        update = next_update.result()
+                    except StopAsyncIteration:
+                        break
+                    finally:
+                        next_update = None
 
-                if not isinstance(update, dict):
-                    continue
-                for node_name, node_update in update.items():
-                    if isinstance(node_update, dict):
-                        accumulated.update(node_update)
-                    yield encode_sse("node", {"node": node_name})
+                    if not isinstance(update, dict):
+                        continue
+                    for node_name, node_update in update.items():
+                        if isinstance(node_update, dict):
+                            accumulated.update(node_update)
+                        yield encode_sse("node", {"node": node_name})
 
-            if "intent" not in accumulated:
-                raise RuntimeError("graph completed without an intent")
-            response = response_from_state(payload, accumulated)
-            yield encode_sse("result", response.model_dump(mode="json"))
-            yield encode_sse("done", {"session_id": payload.session_id})
-        except asyncio.CancelledError:
-            if next_update is not None:
-                next_update.cancel()
-            raise
-        except Exception:
-            if next_update is not None:
-                next_update.cancel()
-            yield encode_sse("error", {"message": "请求处理失败，请稍后重试。"})
-            yield encode_sse("done", {"session_id": payload.session_id})
+                if "intent" not in accumulated:
+                    raise RuntimeError("graph completed without an intent")
+                response = response_from_state(payload, accumulated)
+                yield encode_sse("result", response.model_dump(mode="json"))
+                yield encode_sse("done", {"session_id": payload.session_id})
+            except asyncio.CancelledError:
+                if next_update is not None:
+                    next_update.cancel()
+                raise
+            except Exception:
+                if next_update is not None:
+                    next_update.cancel()
+                yield encode_sse("error", {"message": "请求处理失败，请稍后重试。"})
+                yield encode_sse("done", {"session_id": payload.session_id})
 
     return StreamingResponse(
         event_stream(),
