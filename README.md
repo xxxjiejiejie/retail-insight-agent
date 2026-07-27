@@ -16,7 +16,7 @@
 这个项目解决的是一个典型 AI 应用问题：企业用户不想写 SQL，也不想在制度文件里翻页，但答案又必须可验证、可追溯、可拒答。
 
 - **SQL 分析**：自然语言生成只读 SQL，经过 Schema/字段白名单、SQLGlot AST、危险节点拦截、LIMIT、超时和最多 2 次纠错后执行。
-- **RAG 问答**：Markdown/PDF/DOCX 制度经标题感知分块，使用向量 + BM25 + RRF + Reranker 检索，只返回答案实际使用的引用；证据不足时拒答。
+- **RAG 问答**：Markdown/PDF/DOCX 制度经标题感知分块，使用向量 + BM25 + RRF + Reranker 检索，只返回答案实际使用的引用；证据不足时拒答。扫描版 PDF 可选使用 Qwen 视觉 OCR 回退，并保留来源页码。
 - **Hybrid 联查**：将经营数据问题和制度问题拆分并行执行，合并为带数据库结果和制度依据的答案。
 - **工程闭环**：SSE 进度流、SQLite 会话历史、Schema/制度只读抽屉、CSV/SQL 导出、评测批次对比和演示模式。
 - **可验证性**：保留正常集、挑战集、多轮集、故障恢复集及历史失败样本，不只展示成功截图。
@@ -51,6 +51,7 @@
 - 安全 Text-to-SQL：Schema 注入、JSON 计划、SQLGlot AST、表字段白名单、危险函数拦截、LIMIT、超时、只读执行及最多 2 次纠错；
 - MySQL 8.4 模拟零售库：12 家门店、60 个商品、4000 笔订单、10005 条订单明细；
 - Markdown/PDF/DOCX 统一制度加载、标题感知分块、PDF 页码和稳定段落编号；
+- 可选 Qwen3.7 Plus 扫描版 PDF OCR 回退：仅在原生文本提取全部为空时逐页调用，保留页码并设置页数、Token 与超时上限；
 - 文件 SHA-256 清单驱动的 Chroma 增量更新，未变更文档不重复计算 Embedding；
 - `BAAI/bge-small-zh-v1.5` 向量召回 + 中文字符/双字词 BM25，通过 RRF 融合后保留 Top 12；
 - `BAAI/bge-reranker-base` Top 5 重排、0.1 证据阈值及低相关度拒答；
@@ -88,12 +89,13 @@
 - 3/3 故障恢复评测通过：LLM API 超时、LLM 格式异常、数据库超时；
 - 12/12 挑战集通过：SQL 边界、RAG 库外问题和 Prompt Injection；
 - Docker 页面真实验收通过：评测页展示正常/挑战/多轮/故障专项、优化说明、历史失败和已知限制；E2E `11 passed, 1 skipped`。
+- Qwen3.7 Plus OCR 真实连通验证通过：图片型单页 PDF 自动进入 OCR 回退，日期、金额等固定校验项 `3/3` 命中。
 
 评测集较小且全部为原创模拟场景，这些数字不能等同于生产环境准确率。
 
 已知限制：
 
-- 扫描版 PDF 的 OCR；
+- OCR 目前只支持开发者将扫描版 PDF 放入制度目录后运行索引脚本，不包含网页上传、手写体校对、复杂表格结构还原和置信度标注；
 - RAG 尚未使用独立裁判模型，当前指标验证引用覆盖、拒答和检索链路，不等同于逐句事实一致性；
 - 多轮真实评测目前为 8 组双轮问题，不能代表更长会话、跨天追问和复杂指代；
 - 图表目前校验类型和字段合法性，尚未评价图表类型是否最适合问题；
@@ -113,6 +115,10 @@ flowchart LR
     SQL --> MySQL[("MySQL 只读账号")]
     RAG --> Vector["BGE Small + Chroma"]
     RAG --> BM25["中文 BM25"]
+    Documents["Markdown / PDF / DOCX"] --> NativeText["本地文本提取"]
+    NativeText -->|扫描页无文本| OCR["Qwen3.7 Plus OCR"]
+    NativeText --> RAG
+    OCR --> RAG
     Vector --> RRF["RRF 融合"]
     BM25 --> RRF
     RRF --> Reranker["BGE Reranker Base"]
@@ -134,7 +140,7 @@ app/
 ├── database/            MySQL Engine 与 Schema
 ├── graph/               LangGraph 路由、节点和状态
 ├── llm/                 DeepSeek 兼容客户端
-├── rag/                 文档、检索、重排、引用
+├── rag/                 文档、扫描 PDF OCR、检索、重排、引用
 └── sql_agent/           SQL 生成、校验和执行
 data/
 ├── documents/           Markdown/PDF/DOCX 制度与二进制文档元数据侧车
@@ -232,7 +238,23 @@ Markdown 直接在 YAML frontmatter 中声明元数据。PDF/DOCX 需要同目�
 }
 ```
 
-PDF 必须包含可复制文本；扫描件会明确提示先做 OCR。DOCX 按 Heading 样式分节，表格按文本行进入索引。
+PDF 优先使用本地原生文本提取；当所有页面均无可提取文本时，只有在显式启用 OCR 后才会渲染页面并发送至 Qwen 视觉模型。OCR 结果按页进入索引并保留引用页码；未启用时会明确提示配置方式。DOCX 按 Heading 样式分节，表格按文本行进入索引。
+
+扫描版 PDF 的可选配置如下（仅对已确认可外发的非敏感文档启用；当前仅支持将文件放入 `data/documents` 后运行索引脚本，不提供网页上传）：
+
+```dotenv
+OCR_ENABLED=true
+OCR_PROVIDER=qwen_openai_compatible
+OCR_MODEL=qwen3.7-plus
+OCR_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OCR_API_KEY=仅本地填写
+```
+
+完成配置后，可运行一页无敏感内容的连通测试；脚本会临时生成并外发一张仅含日期和金额示例的扫描页，不会读取 `data/documents` 中的制度文件：
+
+```powershell
+python scripts/verify_ocr.py
+```
 
 ```powershell
 python scripts/index_policies.py
@@ -270,6 +292,15 @@ HOST_MODEL_CACHE_PATH=E:/AIModels/huggingface
 docker compose --progress plain build api
 docker compose up -d --force-recreate api frontend
 docker compose ps
+```
+
+如果只修改了后端或 OCR 代码，无需重建前端，可仅重建并替换 API 容器：
+
+```powershell
+docker compose --progress plain build api
+docker compose up -d --force-recreate api
+docker compose ps
+docker compose logs --tail=100 api
 ```
 
 Compose 将模型缓存只读挂载到容器 `/models`，并启用 Hugging Face/Transformers 离线模式，不会在每次启动时重新下载模型。访问 [http://localhost:8080](http://localhost:8080)；API 为 [http://localhost:8000](http://localhost:8000)。CPU API 镜像实测约 494MB，冷启动首个 RAG 请求约 15 秒，模型预热后同类页面请求约 2.5 秒。当前 Docker 依赖分层的新缓存首次构建约 317.3 秒，紧接着的零变更构建全部命中缓存，约 2.7 秒完成；该数据仅代表同机热缓存场景。
@@ -385,7 +416,7 @@ Content-Type: application/json
 - 查询设置超时和最大返回行数；
 - SQL 错误纠错最多 2 次，不向模型发送密码、连接串或内部堆栈；
 - RAG 低证据拒答，只返回答案实际引用的片段；
-- PDF/DOCX 使用显式元数据侧车，扫描版 PDF 不会被误建为空索引；
+- PDF/DOCX 使用显式元数据侧车；扫描版 PDF 不会被误建为空索引，且 OCR 必须显式启用；
 - `.env`、Chroma 索引、模型缓存和评测报告不进入 Git。
 
 ## 开源与归属

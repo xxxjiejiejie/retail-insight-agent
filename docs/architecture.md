@@ -20,6 +20,12 @@ flowchart LR
     SQL --> MySQL[("MySQL 只读账号")]
     RAG --> Chroma["Chroma + BGE Embedding"]
     RAG --> BM25["中文 BM25"]
+    Documents["Markdown / PDF / DOCX"] --> NativeText["本地文本提取"]
+    NativeText -->|扫描 PDF 无文本| OCR["Qwen3.7 Plus OCR"]
+    NativeText --> Chroma
+    NativeText --> BM25
+    OCR --> Chroma
+    OCR --> BM25
     Chroma --> RRF["RRF 融合"]
     BM25 --> RRF
     RRF --> Reranker["BGE Reranker"]
@@ -86,8 +92,9 @@ SQL 计划包含 `sql`、`explanation` 和可选 `chart`。执行失败或计划
 ### 文档导入与索引
 
 ```text
-data/documents 中的 Markdown / 文本型 PDF / DOCX
+data/documents 中的 Markdown / PDF / DOCX
 → Markdown frontmatter 或 PDF/DOCX JSON 元数据侧车
+→ PDF 原生文本提取；全部为空时可选 Qwen Vision OCR（逐页）
 → 标题、页码、段落感知分块
 → 稳定 chunk_id 与 paragraph_id
 → 源文件和侧车文件 SHA-256 清单
@@ -95,7 +102,7 @@ data/documents 中的 Markdown / 文本型 PDF / DOCX
 → Chroma 向量索引 + BM25 语料
 ```
 
-当前导入方式是开发者将文件放入 `data/documents` 后运行 `python scripts/index_policies.py`，而不是在网页上传。Markdown 在 YAML frontmatter 中声明元数据；PDF/DOCX 使用同名 `.metadata.json` 侧车。PDF 页码进入引用，DOCX 的 Heading 样式形成章节，表格转为文本行。扫描版 PDF 没有 OCR，无法提取文字时会拒绝建索引并提示先做 OCR。
+当前导入方式是开发者将文件放入 `data/documents` 后运行 `python scripts/index_policies.py`，而不是在网页上传。Markdown 在 YAML frontmatter 中声明元数据；PDF/DOCX 使用同名 `.metadata.json` 侧车。PDF 页码进入引用，DOCX 的 Heading 样式形成章节，表格转为文本行。PDF 优先在本地提取可复制文本；只有所有页面均为空且显式设置 `OCR_ENABLED=true`、配置本地 `OCR_API_KEY` 时，才会逐页渲染并发送给 Qwen Vision OCR。OCR 文本继续沿用原有分块、检索和页码引用链路；未启用 OCR 的扫描件会拒绝建索引，避免被误建为空索引。
 
 增量索引比较源文件和侧车文件的 SHA-256：新增或修改文档只重算对应向量，删除文档会清理原有 chunk，零变更运行不会加载 Embedding 模型。`--full-rebuild` 只用于排障和索引格式迁移。
 
@@ -186,7 +193,7 @@ Docker Compose 包含：
 ## 当前限制
 
 - 没有前端文件上传、上传 API 和上传后自动索引任务；
-- 扫描版 PDF 尚未接入 OCR；
+- 扫描版 PDF OCR 仅支持开发者导入场景；不包含前端上传、手写体校对、复杂表格结构还原或置信度标注；
 - 上下文解析不覆盖复杂多实体指代、长会话摘要和跨多轮约束合并；
 - Hybrid 没有第三次统一总结调用；
 - RAG 尚未使用独立裁判模型评估逐句事实一致性；

@@ -5,9 +5,13 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
+from app.core.config import Settings
 from app.rag.loader import load_policy_document
+from app.rag.models import DocumentSection
+from app.rag.ocr import QwenVisionOcrClient
 
 
 def write_sidecar(path: Path) -> None:
@@ -64,6 +68,60 @@ def test_pdf_loader_rejects_scanned_document(
     monkeypatch.setitem(sys.modules, "pypdf", SimpleNamespace(PdfReader=FakeReader))
     with pytest.raises(ValueError, match="OCR"):
         load_policy_document(pdf_path)
+
+
+def test_pdf_loader_uses_ocr_for_scanned_document(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pdf_path = tmp_path / "scanned.pdf"
+    pdf_path.write_bytes(b"fake-pdf-for-mocked-reader")
+    write_sidecar(pdf_path)
+
+    class FakeReader:
+        def __init__(self, path: str):
+            self.pages = [SimpleNamespace(extract_text=lambda: "")]
+
+    class FakeOcrClient:
+        def extract_pdf(self, path: Path) -> list[DocumentSection]:
+            assert path == pdf_path
+            return [DocumentSection(title="OCR page 1", content="recognized policy", page=1)]
+
+    monkeypatch.setitem(sys.modules, "pypdf", SimpleNamespace(PdfReader=FakeReader))
+    monkeypatch.setattr("app.rag.ocr.get_ocr_client", lambda: FakeOcrClient())
+
+    document = load_policy_document(pdf_path)
+
+    assert document.content == "recognized policy"
+    assert document.sections[0].page == 1
+
+
+def test_qwen_ocr_client_uses_openai_compatible_vision_request() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["authorization"] = request.headers["Authorization"]
+        body = json.loads(request.content)
+        seen["model"] = body["model"]
+        seen["image_url"] = body["messages"][0]["content"][1]["image_url"]["url"]
+        return httpx.Response(200, json={"choices": [{"message": {"content": "OCR result"}}]})
+
+    settings = Settings(
+        ocr_enabled=True,
+        ocr_provider="qwen_openai_compatible",
+        ocr_api_key="test-only-key",
+        ocr_base_url="https://example.test/compatible-mode/v1",
+    )
+    client = QwenVisionOcrClient(settings, transport=httpx.MockTransport(handler))
+
+    assert client.extract_page(b"fake-png", page_number=1) == "OCR result"
+    assert seen == {
+        "path": "/compatible-mode/v1/chat/completions",
+        "authorization": "Bearer test-only-key",
+        "model": "qwen3.7-plus",
+        "image_url": "data:image/png;base64,ZmFrZS1wbmc=",
+    }
 
 
 def test_docx_loader_extracts_headings_paragraphs_and_tables(tmp_path: Path) -> None:

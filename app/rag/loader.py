@@ -81,7 +81,17 @@ def _load_pdf_document(path: Path) -> PolicyDocument:
                 DocumentSection(title=f"第 {page_number} 页", content=text, page=page_number)
             )
     if not sections:
-        raise ValueError(f"{path.name} 未提取到文本，可能是扫描版 PDF，需要先进行 OCR")
+        # Keep OCR optional: text PDFs never leave the machine, while image-only
+        # PDFs can opt in to the configured visual model.
+        from app.rag.ocr import get_ocr_client
+
+        ocr_client = get_ocr_client()
+        if ocr_client is None:
+            raise ValueError(
+                f"{path.name} 未提取到文本，可能是扫描版 PDF；"
+                "请配置 OCR_ENABLED=true 和 OCR_API_KEY 后重试"
+            )
+        sections = ocr_client.extract_pdf(path)
     return PolicyDocument(
         document_id=metadata["document_id"],
         title=metadata["title"],

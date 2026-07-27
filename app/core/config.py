@@ -33,6 +33,17 @@ class Settings(BaseSettings):
     langsmith_max_string_length: int = Field(default=2_000, ge=200, le=20_000)
     langsmith_policy_excerpt_length: int = Field(default=600, ge=100, le=5_000)
 
+    # OCR is deliberately opt-in because scanned pages are sent to the configured
+    # vision service only when native PDF text extraction has no usable result.
+    ocr_enabled: bool = False
+    ocr_provider: str = "qwen_openai_compatible"
+    ocr_model: str = "qwen3.7-plus"
+    ocr_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    ocr_api_key: str = Field(default="", repr=False)
+    ocr_max_pages: int = Field(default=20, ge=1, le=100)
+    ocr_max_tokens: int = Field(default=2_000, ge=100, le=8_000)
+    ocr_timeout_seconds: float = Field(default=60.0, gt=0, le=300)
+
     database_url: str = (
         "mysql+aiomysql://retail_readonly:readonly-local-dev@localhost:3307/retail_insight"
     )
@@ -67,6 +78,10 @@ class Settings(BaseSettings):
     @property
     def langsmith_enabled(self) -> bool:
         return self.langsmith_tracing and bool(self.langsmith_api_key)
+
+    @property
+    def ocr_available(self) -> bool:
+        return self.ocr_enabled and bool(self.ocr_api_key)
 
 
 @lru_cache
