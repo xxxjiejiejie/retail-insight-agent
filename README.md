@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
 ![Vue](<https://img.shields.io/badge/Frontend-Vue%203-42B883?logo=vuedotjs&logoColor=white>)
-![Tests](<https://img.shields.io/badge/tests-99%20passed%20%7C%203%20skipped-2ea44f>)
+![Tests](<https://img.shields.io/badge/tests-102%20passed%20%7C%203%20skipped-2ea44f>)
 
 当前真实评测批次：`v11-multiturn-resilience-20260726`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`。评测结果不等同于生产环境准确率，数据为原创模拟零售场景。完整指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
 
@@ -32,6 +32,12 @@
 | Schema 抽屉                                              | 制度知识库抽屉                                    |
 | -------------------------------------------------------- | ------------------------------------------------- |
 | ![经营数据库 Schema](docs/screenshots/schema-drawer.png) | ![制度知识库](docs/screenshots/policy-drawer.png) |
+
+### LangSmith 运行可观测性
+
+真实 Hybrid 请求会在 LangSmith 中展示 LangGraph 路由、Hybrid 并行分支、两次 DeepSeek 调用、RAG 召回与重排、SQL 执行和会话持久化。追踪数据经过密钥脱敏、数据库结果行省略和制度片段截断后再发送。
+
+![LangSmith Hybrid 调用链](docs/screenshots/langsmith-hybrid-trace.png)
 
 访问 `http://localhost:8080/?demo=1` 可进入零 Token 演示模式。
 
@@ -60,7 +66,7 @@
 - 基础上下文追问解析：将“那华东呢”“换成五月”“只看未达标门店”“这个制度的申诉期限呢”等短追问与最近一次分析问题组合，不增加额外 LLM 调用；Hybrid 追问会同时传给 SQL 与 RAG 子分支；
 - 统一 100 项本地评测：30 条 SQL 参考执行、20 条 RAG 召回/拒答、25 条路由、10 条 Hybrid 拆分和 15 条 SQL 安全边界；
 - SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
-- Python 3.12、102 个 pytest 用例（99 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
+- Python 3.12、105 个 pytest 用例（102 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
 
 前端交互与运行模式：
 
