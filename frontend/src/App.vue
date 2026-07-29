@@ -163,7 +163,7 @@ const currentIntent = computed(() =>
   intentDetails[result.value?.intent ?? "general"],
 )
 const displayedHistory = computed(() => (isDemoMode.value ? demoHistory.value : history.value))
-const recentHistory = computed(() => [...displayedHistory.value].reverse().slice(0, 5))
+const recentHistory = computed(() => [...displayedHistory.value].reverse())
 const sessionShortId = computed(() => sessionId.value.slice(0, 8))
 const isHistoricalResult = computed(() => Boolean(selectedTurnId.value))
 const serviceItems = computed(() => {

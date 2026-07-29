@@ -177,8 +177,17 @@ button.nav-item {
   margin-top: 32px;
 }
 
+.recent-section {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
 .sidebar-title {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   padding: 0 10px 10px;
@@ -191,7 +200,33 @@ button.nav-item {
 
 .recent-list {
   display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
   gap: 4px;
+  align-content: start;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(112, 174, 153, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-width: thin;
+}
+
+.recent-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recent-list::-webkit-scrollbar-track {
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.recent-list::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: rgba(112, 174, 153, 0.55);
+}
+
+.recent-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(112, 190, 163, 0.75);
 }
 
 .recent-item {
@@ -255,8 +290,8 @@ button.nav-item {
   position: relative;
   z-index: 1;
   display: grid;
+  flex: 0 0 auto;
   gap: 12px;
-  margin-top: auto;
 }
 
 .service-health {
