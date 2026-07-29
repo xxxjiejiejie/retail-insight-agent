@@ -7,7 +7,7 @@
 ![Vue](<https://img.shields.io/badge/Frontend-Vue%203-42B883?logo=vuedotjs&logoColor=white>)
 ![Tests](<https://img.shields.io/badge/tests-117%20passed%20%7C%203%20skipped-2ea44f>)
 
-当前端到端基线为 `v11-multiturn-resilience-20260726`，RAG 检索消融批次为 `v12-rag-ablation-20260729`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`；消融实验覆盖 100 份原创模拟制度和 80 条 chunk 级问题。评测结果不等同于生产环境准确率。完整端到端指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
+当前端到端基线为 `v11-multiturn-resilience-20260726`，RAG 检索消融批次为 `v12-rag-ablation-20260729`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`；消融实验覆盖 100 份原创模拟制度、484 个 chunk 和 80 条 chunk 级问题。完整结果见 [v1.1 端到端评测](docs/EVALUATION_V11.md) 与 [v1.2 RAG 消融评测](docs/EVALUATION_RAG_ABLATION_V12.md)。所有数字均不等同于生产环境准确率。
 
 面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Report、Clarify 或 General 分支。
 
@@ -16,7 +16,7 @@
 这个项目解决的是一个典型 AI 应用问题：企业用户不想写 SQL，也不想在制度文件里翻页，但答案又必须可验证、可追溯、可拒答。
 
 - **SQL 分析**：自然语言生成只读 SQL，经过 Schema/字段白名单、SQLGlot AST、危险节点拦截、LIMIT、超时和最多 2 次纠错后执行。
-- **RAG 问答**：Markdown/PDF/DOCX 制度经标题感知分块，使用向量 + BM25 + RRF + Reranker 检索，只返回答案实际使用的引用；证据不足时拒答。扫描版 PDF 可选使用 Qwen 视觉 OCR 回退，并保留来源页码。
+- **RAG 问答**：100 份原创模拟 Markdown/PDF/DOCX 制度经标题感知分块形成 484 个 chunk，使用向量 + BM25 + RRF + Reranker 检索，只返回答案实际使用的引用；证据不足时拒答。扫描版 PDF 可选使用 Qwen 视觉 OCR 回退，并保留来源页码。
 - **Hybrid 联查**：将经营数据问题和制度问题拆分并行执行，合并为带数据库结果和制度依据的答案。
 - **多轮报告 Agent**：在已有 SQL/Hybrid 结果上启用受控 ReAct Tool Calling，可按需检索制度依据并生成带来源的 HTML 报告。
 - **工程闭环**：SSE 进度流、SQLite 会话历史、Schema/制度只读抽屉、CSV/SQL 导出、评测批次对比和演示模式。
@@ -33,6 +33,12 @@
 | Schema 抽屉                                              | 制度知识库抽屉                                    |
 | -------------------------------------------------------- | ------------------------------------------------- |
 | ![经营数据库 Schema](docs/screenshots/schema-drawer.png) | ![制度知识库](docs/screenshots/policy-drawer.png) |
+
+### v1.2 RAG 检索消融
+
+评测页基于 80 条 chunk 级 Ground Truth，对 Vector、BM25、RRF、RRF + BGE Reranker 展示 Hit@5、MRR@5、nDCG@5、P50/P95 延迟和失败样本。
+
+![v1.2 RAG 检索消融实验](docs/screenshots/rag-ablation-v12.png)
 
 ### 报告生成与受控 ReAct
 
@@ -52,9 +58,9 @@
 
 访问 `http://localhost:8080/?demo=1` 可进入零 Token 演示模式。
 
-## 当前版本：v1.1
+## 当前版本：v1.2
 
-当前版本在 v0.8 的交互闭环基础上，增加了真实评测、失败分析、多轮追问和故障恢复能力：
+v1.2 在 v1.1 的端到端评测、失败分析、多轮追问和故障恢复基础上，补充了受控报告 Agent、100 份模拟制度语料、chunk 级 Ground Truth、四组 RAG 消融实验及前端可视化：
 
 - FastAPI `POST /api/v1/chat` 与 LangGraph 条件路由；
 - DeepSeek V4 Pro Anthropic 兼容客户端；
@@ -66,6 +72,9 @@
 - 文件 SHA-256 清单驱动的 Chroma 增量更新，未变更文档不重复计算 Embedding；
 - `BAAI/bge-small-zh-v1.5` 向量召回 + 中文字符/双字词 BM25，通过 RRF 融合后保留 Top 12；
 - `BAAI/bge-reranker-base` Top 5 重排、0.1 证据阈值及低相关度拒答；
+- 100 份原创模拟制度覆盖 10 个业务域，经一致性校验形成 484 个唯一 chunk；
+- 80 条 chunk 级 Ground Truth 覆盖 60 条直接事实、10 条跨文档和 10 条库外问题；
+- Vector、BM25、RRF、RRF + BGE Reranker 四组本地消融实验，统一计算 Hit@5、MRR@5、nDCG@5 和 P50/P95 延迟；
 - DeepSeek 基于证据生成答案，只返回答案中实际使用的 `[数字]` 引用；
 - Hybrid 问题拆分为数据与制度子问题并行执行；
 - 报告追问进入独立 `report_agent` 节点：最多两次白名单工具调用，支持制度证据检索和 HTML 报告产物生成；
@@ -95,7 +104,7 @@
 - 30/30 条参考 SQL 可通过安全校验并在真实 MySQL 执行；
 - 完整 30 条真实 DeepSeek Text-to-SQL 通过 30/30，包含 Top-N、聚合、状态枚举和复杂 CTE 场景；
 - 20/20 条本地 RAG 召回/拒答评测通过；
-- 17 条有答案题中纯向量与混合召回均为 17/17，当前小型题集尚未体现召回增益；
+- v1.2 RAG 消融评测覆盖 100 份制度、484 个 chunk 和 80 条问题；RRF + BGE Reranker 达到 Hit@5 `84.3%`、MRR@5 `82.5%`、nDCG@5 `82.4%`；
 - 100/100 项完整本地综合评测通过，两次运行约 23～28 秒，付费 LLM 调用为 0；
 - 20/20 条真实 DeepSeek RAG 评测通过，其中 17 条有答案题返回制度引用，3 条库外问题零引用拒答；本批次使用 2,544 Token；
 - 5/5 条真实 DeepSeek Hybrid 问题通过数据库结果与制度引用双重校验，本批次使用 4,493 Token；
@@ -105,12 +114,12 @@
 - Docker 页面真实验收通过：评测页展示正常/挑战/多轮/故障专项、优化说明、历史失败和已知限制；E2E `11 passed, 1 skipped`。
 - Qwen3.7 Plus OCR 真实连通验证通过：图片型单页 PDF 自动进入 OCR 回退，日期、金额等固定校验项 `3/3` 命中。
 
-评测集较小且全部为原创模拟场景，这些数字不能等同于生产环境准确率。
+语料和评测问题全部为原创模拟场景，尚未经过真实企业制度验证、双人独立标注或线上流量检验；这些数字不能等同于生产环境准确率。
 
 已知限制：
 
 - OCR 目前只支持开发者将扫描版 PDF 放入制度目录后运行索引脚本，不包含网页上传、手写体校对、复杂表格结构还原和置信度标注；
-- RAG 尚未使用独立裁判模型，当前指标验证引用覆盖、拒答和检索链路，不等同于逐句事实一致性；
+- RAG 已增加 chunk 级 Hit@5、MRR@5、nDCG@5 与四组消融，但尚未使用独立裁判模型，不等同于最终答案的逐句事实一致性；
 - 多轮真实评测目前为 8 组双轮问题，不能代表更长会话、跨天追问和复杂指代；
 - 图表目前校验类型和字段合法性，尚未评价图表类型是否最适合问题；
 - 认证、细粒度权限、审计、限流和线上监控不在当前离线评测范围；
@@ -231,6 +240,7 @@ prototype/               Streamlit 早期原型
 docs/
 ├── architecture.md      架构与调用链
 ├── EVALUATION_V11.md     v1.1 真实评测摘要
+├── EVALUATION_RAG_ABLATION_V12.md  v1.2 RAG 检索消融评测
 └── screenshots/          GitHub 页面截图
 scripts/                 数据、索引、验证和评测脚本
 tests/                   单元与集成测试
@@ -405,9 +415,16 @@ npm.cmd run dev
 
 ### RAG 检索消融实验
 
-本版本将制度库扩充到 100 份原创模拟制度、484 个稳定 chunk，并建立 80 条 chunk 级 Ground Truth（70 条可回答、10 条库外诊断题）。`evaluate_rag_ablation.py` 在完全本地的 Vector、BM25、RRF、RRF + BGE Reranker 四组 Pipeline 上计算 Hit@5、MRR@5、nDCG@5、P50/P95 延迟和失败样本，不调用 DeepSeek、LangSmith 或数据库。
+本版本将制度库扩充到 100 份原创模拟制度、484 个稳定 chunk，并建立 80 条 chunk 级 Ground Truth（70 条可回答、10 条库外诊断题）。`evaluate_rag_ablation.py` 在完全本地的四组 Pipeline 上计算标准排序指标、延迟和失败样本，不调用 DeepSeek、LangSmith 或数据库。
 
-最近批次 `v12-rag-ablation-20260729` 的 RRF + BGE Reranker 指标为 Hit@5 `84.3%`、MRR@5 `82.5%`、nDCG@5 `82.4%`。运行 `archive_evaluation_run.py` 后，评测结果页会展示语料规模、四组 Pipeline 对比图、延迟和失败样本；库外问题不混入三项排序指标。
+| Pipeline | Hit@5 | MRR@5 | nDCG@5 | P50 | P95 | 失败样本 |
+|---|---:|---:|---:|---:|---:|---:|
+| Vector | 71.43% | 47.31% | 52.54% | 13.25ms | 22.35ms | 20 |
+| BM25 | 32.86% | 9.31% | 15.05% | 6.09ms | 8.75ms | 47 |
+| RRF | 51.43% | 21.50% | 28.99% | 13.34ms | 22.49ms | 34 |
+| **RRF + BGE Reranker** | **84.29%** | **82.50%** | **82.36%** | 191.40ms | 203.46ms | **11** |
+
+RRF + BGE Reranker 相对纯 Vector 的 Hit@5 提高 12.86 个百分点，说明在结构相似的模拟 SOP 中，Reranker 能有效纠正同主题错误章节的排序。纯 RRF 低于 Vector 也被保留：词法召回噪声说明融合并不天然带来增益，必须通过消融验证。完整口径、结果分析、复现命令和限制见 [v1.2 RAG 检索消融评测](docs/EVALUATION_RAG_ABLATION_V12.md)。库外问题不混入三项排序指标。
 
 ```powershell
 python -m ruff check app tests scripts
@@ -497,9 +514,9 @@ Content-Type: application/json
 评测接口：
 
 - `GET /api/v1/evaluation/runs`：读取历史评测批次摘要；
-- `GET /api/v1/evaluation/runs/{run_id}`：读取指定批次的分支指标、专项评测、优化说明、限制、失败样本和来源报告。
+- `GET /api/v1/evaluation/runs/{run_id}`：读取指定批次的分支指标、RAG 消融、专项评测、优化说明、限制、失败样本和来源报告。
 
-运行 `python scripts/archive_evaluation_run.py --run-id <唯一批次名>` 可将当前 SQL/RAG/Hybrid、多轮和故障报告归档到 `data/runtime/evaluation_runs`。前端“评测结果”页面展示准确率、拒答率、Token、P50/P95 延迟、专项指标、优化说明、失败样本和批次对比；当前报告覆盖数量会原样显示，不会补写缺失样本。
+运行 `python scripts/archive_evaluation_run.py --run-id <唯一批次名>` 可将当前 SQL/RAG/Hybrid、多轮、故障和 RAG 消融报告归档到 `data/runtime/evaluation_runs`。前端“评测结果”页面展示准确率、拒答率、Token、P50/P95 延迟、RAG 消融图表、专项指标、优化说明、失败样本和批次对比；当前报告覆盖数量会原样显示，不会补写缺失样本。
 
 ## 安全边界
 

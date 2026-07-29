@@ -177,14 +177,28 @@ SSE 事件包括 `start`、`node`、`heartbeat`、`result`、`error` 和 `done`�
 
 ## 评测与可观测性
 
-评测数据分为四类：
+评测数据分为五类：
 
 - 正常集：SQL、RAG、Hybrid；
 - 挑战集：SQL 边界、RAG 库外问题、Prompt Injection；
 - 多轮集：SQL、RAG、Hybrid 的真实双轮追问；
-- 故障恢复集：LLM 超时、LLM 格式异常、数据库超时。
+- 故障恢复集：LLM 超时、LLM 格式异常、数据库超时；
+- RAG 检索消融集：70 条可回答问题与 10 条库外诊断题，绑定稳定 chunk 级 Ground Truth。
 
-批次归档不可覆盖，并保留历史失败样本。评测页展示准确率、拒答率、Token、P50/P95 延迟、优化说明、指标变化和已知限制。响应级指标还可包含 SQL 尝试次数、召回数、重排数、有效证据数、引用数以及 SQL/RAG/Hybrid 分支耗时。
+RAG 消融评测在本地复用同一份 100 文档、484 chunk 语料，分别运行 Vector、BM25、RRF 和 RRF + BGE Reranker，统一计算 Hit@5、MRR@5、nDCG@5 与 P50/P95 延迟。库外问题不混入排序指标，裸检索候选也不解释为最终系统作答。
+
+```mermaid
+flowchart LR
+    Corpus["100 份原创模拟制度"] --> Chunk["484 个稳定 Chunk"]
+    GroundTruth["80 条 Chunk 级 Ground Truth"] --> Pipelines
+    Chunk --> Pipelines["Vector / BM25 / RRF / Reranker"]
+    Pipelines --> Metrics["Hit@5 / MRR@5 / nDCG@5 / 延迟"]
+    Metrics --> Report["rag_ablation_report.json"]
+    Report --> Archive["不可覆盖评测批次"]
+    Archive --> Dashboard["Vue + ECharts 消融图表与失败样本"]
+```
+
+批次归档不可覆盖，并保留历史失败样本。评测页展示准确率、拒答率、Token、P50/P95 延迟、RAG 消融图表、优化说明、指标变化和已知限制。响应级指标还可包含 SQL 尝试次数、召回数、重排数、有效证据数、引用数以及 SQL/RAG/Hybrid 分支耗时。
 
 ### LangSmith 运行追踪
 
@@ -219,6 +233,7 @@ Docker Compose 包含：
 - 上下文解析不覆盖复杂多实体指代、长会话摘要和跨多轮约束合并；
 - Hybrid 没有第三次统一总结调用；
 - RAG 尚未使用独立裁判模型评估逐句事实一致性；
+- RAG 消融 Ground Truth 尚未经过双人独立标注，跨文档问题尚缺少完整文档覆盖率指标；
 - 认证、细粒度权限、审计、限流和线上监控不在当前离线实现范围；
 - 报告 Agent 首版只生成 HTML，尚未提供 DOCX/PDF 原生导出、异步队列和长会话摘要；
-- 当前评测集为原创模拟数据，结果不能直接解释为生产环境准确率。
+- 当前 100 份制度和全部评测问题均为原创模拟数据，结果不能直接解释为生产环境准确率。
