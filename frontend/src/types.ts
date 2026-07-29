@@ -1,4 +1,4 @@
-export type Intent = "sql" | "rag" | "hybrid" | "clarify" | "general"
+export type Intent = "sql" | "rag" | "hybrid" | "report" | "clarify" | "general"
 
 export interface Citation {
   source: string
@@ -46,6 +46,33 @@ export interface ChatMetrics {
   evidence_count?: number
   citation_count?: number
   context_used?: boolean
+  tool_round_count?: number
+  tool_call_count?: number
+  tool_latency_ms?: number
+}
+
+export interface ToolCallTrace {
+  tool_call_id: string
+  tool_name: string
+  arguments_summary: Record<string, unknown>
+}
+
+export interface ToolResultTrace {
+  tool_name: string
+  arguments_summary: Record<string, unknown>
+  status: "success" | "error"
+  latency_ms: number
+  error_type?: string | null
+  result_count?: number | null
+}
+
+export interface ReportArtifact {
+  report_id: string
+  title: string
+  format: "html"
+  download_url: string
+  source_turn_id: string
+  created_at: string
 }
 
 export interface ChatResponse {
@@ -59,6 +86,10 @@ export interface ChatResponse {
   sql_result?: SQLResult | null
   chart_spec?: ChartSpec | null
   citations: Citation[]
+  tool_calls?: ToolCallTrace[]
+  tool_results?: ToolResultTrace[]
+  tool_round_count?: number
+  report_artifact?: ReportArtifact | null
   errors: string[]
   metrics: ChatMetrics
 }
@@ -76,6 +107,10 @@ export interface ChatTurn {
   sql_result?: SQLResult | null
   chart_spec?: ChartSpec | null
   citations: Citation[]
+  tool_calls?: ToolCallTrace[]
+  tool_results?: ToolResultTrace[]
+  tool_round_count?: number
+  report_artifact?: ReportArtifact | null
   errors: string[]
   metrics: ChatMetrics
 }

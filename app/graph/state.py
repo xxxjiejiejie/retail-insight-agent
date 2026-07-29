@@ -1,6 +1,6 @@
 from typing import Annotated, Any, Literal, TypedDict
 
-Intent = Literal["sql", "rag", "hybrid", "clarify", "general"]
+Intent = Literal["sql", "rag", "hybrid", "report", "clarify", "general"]
 MAX_SESSION_TURNS = 20
 
 
@@ -26,6 +26,10 @@ class AgentState(TypedDict, total=False):
     sql_result: dict[str, Any] | None
     retrieved_docs: list[dict[str, Any]]
     citations: list[dict[str, Any]]
+    tool_calls: list[dict[str, Any]]
+    tool_results: list[dict[str, Any]]
+    tool_round_count: int
+    report_artifact: dict[str, Any] | None
     chart_spec: dict[str, Any] | None
     answer: str | None
     retry_count: int

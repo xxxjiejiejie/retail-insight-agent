@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
 ![Vue](<https://img.shields.io/badge/Frontend-Vue%203-42B883?logo=vuedotjs&logoColor=white>)
-![Tests](<https://img.shields.io/badge/tests-102%20passed%20%7C%203%20skipped-2ea44f>)
+![Tests](<https://img.shields.io/badge/tests-115%20passed%20%7C%203%20skipped-2ea44f>)
 
 当前真实评测批次：`v11-multiturn-resilience-20260726`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`。评测结果不等同于生产环境准确率，数据为原创模拟零售场景。完整指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
 
@@ -18,6 +18,7 @@
 - **SQL 分析**：自然语言生成只读 SQL，经过 Schema/字段白名单、SQLGlot AST、危险节点拦截、LIMIT、超时和最多 2 次纠错后执行。
 - **RAG 问答**：Markdown/PDF/DOCX 制度经标题感知分块，使用向量 + BM25 + RRF + Reranker 检索，只返回答案实际使用的引用；证据不足时拒答。扫描版 PDF 可选使用 Qwen 视觉 OCR 回退，并保留来源页码。
 - **Hybrid 联查**：将经营数据问题和制度问题拆分并行执行，合并为带数据库结果和制度依据的答案。
+- **多轮报告 Agent**：在已有 SQL/Hybrid 结果上启用受控 ReAct Tool Calling，可按需检索制度依据并生成带来源的 HTML 报告。
 - **工程闭环**：SSE 进度流、SQLite 会话历史、Schema/制度只读抽屉、CSV/SQL 导出、评测批次对比和演示模式。
 - **可验证性**：保留正常集、挑战集、多轮集、故障恢复集及历史失败样本，不只展示成功截图。
 
@@ -57,6 +58,8 @@
 - `BAAI/bge-reranker-base` Top 5 重排、0.1 证据阈值及低相关度拒答；
 - DeepSeek 基于证据生成答案，只返回答案中实际使用的 `[数字]` 引用；
 - Hybrid 问题拆分为数据与制度子问题并行执行；
+- 报告追问进入独立 `report_agent` 节点：最多两次白名单工具调用，支持制度证据检索和 HTML 报告产物生成；
+- 工具参数使用 Pydantic `extra=forbid` 校验，报告文件使用随机 ID 和会话 ID 校验，不允许模型指定路径、SQL 或 Shell；
 - Vue 3 + TypeScript + Element Plus + ECharts 展示型分析工作台，包含深色导航、示例问题、SSE 进度、结果分区和响应式布局；
 - 分析结果按“结论、数据与图表、制度依据、运行轨迹”组织，支持 CSV 导出、SQL 复制、会话快速复用以及引用位置与相关度展示；
 - Element Plus 按需注册、ECharts 模块化注册与异步加载；首屏主 JS 从 2197.88KB 降至 384.28KB，CSS 从 359.49KB 降至 89.27KB；
@@ -67,13 +70,14 @@
 - 基础上下文追问解析：将“那华东呢”“换成五月”“只看未达标门店”“这个制度的申诉期限呢”等短追问与最近一次分析问题组合，不增加额外 LLM 调用；Hybrid 追问会同时传给 SQL 与 RAG 子分支；
 - 统一 100 项本地评测：30 条 SQL 参考执行、20 条 RAG 召回/拒答、25 条路由、10 条 Hybrid 拆分和 15 条 SQL 安全边界；
 - SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
-- Python 3.12、105 个 pytest 用例（102 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
+- Python 3.12、118 个 pytest 用例（115 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
 
 前端交互与运行模式：
 
 - Checkpointer 保存每轮轻量结果快照，历史会话可恢复对应回答、SQL、表格、图表、引用和指标；SQL 历史行数最多保存前 100 行并保留原始总行数；
 - “经营数据库”和“制度知识库”提供只读元数据抽屉，分别查看真实表字段和 8 份制度目录；
 - `?demo=1` 进入前端演示模式，使用内置 SQL/RAG/Hybrid 样例，不调用 DeepSeek、不访问真实数据库、不写入真实会话；
+- 报告结果会在运行轨迹中展示工具名称、状态、参数摘要和耗时，并提供报告产物入口；
 - 页面启动时实际检查 API、经营数据库和制度知识库状态，并提供检查中、正常、异常和演示四类提示。
 
 当前真实评测结果：
@@ -101,6 +105,7 @@
 - 图表目前校验类型和字段合法性，尚未评价图表类型是否最适合问题；
 - 认证、细粒度权限、审计、限流和线上监控不在当前离线评测范围；
 - GPU RAG API 镜像仍未单独发布，Compose 使用 CPU 版保证可移植部署。
+- 报告 Agent 首版只支持 HTML，不能直接生成 DOCX/PDF；报告必须建立在当前会话已有 SQL/Hybrid 结构化结果上，尚未接入异步队列和复杂长会话摘要。
 
 ## 架构
 
@@ -108,10 +113,11 @@
 flowchart LR
     Vue["Vue 3"] --> API["FastAPI"]
     API --> Graph["LangGraph + Context Resolver"]
-    Graph --> Router["SQL / RAG / Hybrid / Clarify / General"]
+    Graph --> Router["SQL / RAG / Hybrid / Report / Clarify / General"]
     Router --> SQL["安全 Text-to-SQL"]
     Router --> RAG["制度 RAG"]
     Router --> Hybrid["Hybrid 拆分与并行"]
+    Router --> Report["受控 ReAct 报告 Agent"]
     SQL --> MySQL[("MySQL 只读账号")]
     RAG --> Vector["BGE Small + Chroma"]
     RAG --> BM25["中文 BM25"]
@@ -126,6 +132,9 @@ flowchart LR
     SQL --> Answer
     Hybrid --> SQL
     Hybrid --> RAG
+    Report --> PolicyTool["制度证据工具"]
+    Report --> RenderTool["HTML 报告工具"]
+    RenderTool --> Artifact["报告文件 + 下载 API"]
     Graph --> Session[("AsyncSqliteSaver")]
 ```
 
@@ -141,6 +150,7 @@ app/
 ├── graph/               LangGraph 路由、节点和状态
 ├── llm/                 DeepSeek 兼容客户端
 ├── rag/                 文档、扫描 PDF OCR、检索、重排、引用
+├── tools/               白名单工具、受控报告 Agent 与 HTML 产物
 └── sql_agent/           SQL 生成、校验和执行
 data/
 ├── documents/           Markdown/PDF/DOCX 制度与二进制文档元数据侧车
@@ -203,6 +213,10 @@ LEXICAL_CORPUS_PATH=./data/runtime/bm25_corpus.json
 RAG_VECTOR_TOP_K=20
 RAG_BM25_TOP_K=20
 RAG_RRF_K=60
+
+REPORT_OUTPUT_PATH=./data/runtime/reports
+REPORT_TOOL_TIMEOUT_SECONDS=20
+REPORT_MAX_TOOL_CALLS=2
 ```
 
 首次索引/模型验证完成后可把 `MODEL_LOCAL_FILES_ONLY` 改为 `true`，避免已缓存模型启动时仍访问 Hugging Face。模型缓存也可以放到仓库外的其他磁盘目录。
@@ -339,6 +353,7 @@ python scripts/evaluate_rag.py
 python scripts/evaluate_hybrid_live.py
 python scripts/verify_api_e2e.py
 python scripts/verify_session_stream.py --reset
+python scripts/evaluate_report_agent.py --live
 ```
 
 不调用付费模型的脚本：
@@ -379,6 +394,8 @@ python scripts/archive_evaluation_run.py --run-id <unique-run-id> --label "<batc
 
 真实评测会把原创模拟问题、Schema 或制度检索片段发送至配置的模型 API；默认开发测试不调用付费模型。`verify_langsmith.py --live-llm` 会向 LangSmith 发送脱敏隐私探针，并额外调用一次 DeepSeek，运行前同样需要明确外发授权。
 
+`evaluate_report_agent.py` 会连续发送一条原创模拟经营查询和一条报告追问，并验证 `report_agent` 的工具选择、报告产物和调用上限。脚本必须显式添加 `--live`，运行前应重新确认将发送的问题、上一轮受控分析结果和可选制度片段。
+
 ## API 示例
 
 ```http
@@ -391,7 +408,7 @@ Content-Type: application/json
 }
 ```
 
-响应会根据分支返回 `resolved_query`、`context_used`、`generated_sql`、`sql_result`、`chart_spec`、`citations`、`errors` 和 `metrics`。引用包含制度名、版本、章节、PDF 页码（如有）、段落编号、原文片段和相关度。
+响应会根据分支返回 `resolved_query`、`context_used`、`generated_sql`、`sql_result`、`chart_spec`、`citations`、`tool_calls`、`tool_results`、`report_artifact`、`errors` 和 `metrics`。报告分支只接受当前会话最近一条 SQL/Hybrid 结构化结果，产物通过 `report_artifact.download_url` 读取。引用包含制度名、版本、章节、PDF 页码（如有）、段落编号、原文片段和相关度。
 
 流式接口为 `POST /api/v1/chat/stream`，依次发送 `start`、`node`、可选 `heartbeat`、`result` 和 `done` 事件。这里的“流式”是可观测的 LangGraph 节点进度与最终结果，不是伪造的逐 Token 输出。
 
@@ -399,6 +416,7 @@ Content-Type: application/json
 
 - `GET /api/v1/sessions/{session_id}`：读取最近 20 轮；
 - `DELETE /api/v1/sessions/{session_id}`：删除指定会话，不影响其他会话。
+- `GET /api/v1/reports/{report_id}?session_id=<session_id>`：读取当前会话生成的 HTML 报告；会话不匹配时返回 404。
 
 评测接口：
 

@@ -4,11 +4,16 @@ from time import perf_counter
 from uuid import uuid4
 
 from app.core.config import get_settings
-from app.graph.context import resolve_contextual_query
+from app.graph.context import (
+    find_report_source_turn,
+    looks_like_report_request,
+    resolve_contextual_query,
+)
 from app.graph.router import classify_intent
 from app.graph.state import AgentState
 from app.rag.service import handle_rag_question
 from app.sql_agent.service import handle_sql_question
+from app.tools.agent import handle_report_request
 
 HYBRID_SEPARATORS = ("并说明", "同时说明", "并依据", "并结合", "同时")
 CONTEXT_FOLLOWUP_MARKER = "；基于上一问题继续追问："
@@ -42,6 +47,16 @@ def merge_hybrid_metrics(
 
 
 def route_node(state: AgentState) -> dict:
+    if looks_like_report_request(state["user_query"]):
+        source_turn = find_report_source_turn(state.get("turns"))
+        return {
+            "intent": "report",
+            "resolved_query": state["user_query"].strip(),
+            "context_used": source_turn is not None,
+            "context_source_turn_id": (
+                str(source_turn.get("turn_id")) if source_turn is not None else None
+            ),
+        }
     resolution = resolve_contextual_query(state["user_query"], state.get("turns"))
     return {
         "intent": classify_intent(resolution.query),
@@ -136,6 +151,19 @@ async def hybrid_node(state: AgentState) -> dict:
     return attach_context_metric(state, result)
 
 
+async def report_agent_node(state: AgentState) -> dict:
+    source_turn = find_report_source_turn(
+        state.get("turns"),
+        state.get("context_source_turn_id"),
+    )
+    result = await handle_report_request(
+        state["user_query"],
+        session_id=state["session_id"],
+        source_turn=source_turn,
+    )
+    return attach_context_metric(state, result)
+
+
 def route_key(state: AgentState) -> str:
     return state["intent"]
 
@@ -166,6 +194,10 @@ def persist_turn_node(state: AgentState) -> dict:
         "sql_result": sql_result,
         "chart_spec": state.get("chart_spec"),
         "citations": state.get("citations", []),
+        "tool_calls": state.get("tool_calls", []),
+        "tool_results": state.get("tool_results", []),
+        "tool_round_count": state.get("tool_round_count", 0),
+        "report_artifact": state.get("report_artifact"),
         "errors": state.get("errors", []),
         "metrics": state.get("metrics", {}),
     }

@@ -20,6 +20,19 @@ CONTEXT_PREFIXES = (
     "其中",
 )
 ANALYTICAL_INTENTS = {"sql", "rag", "hybrid"}
+REPORT_SOURCE_INTENTS = {"sql", "hybrid"}
+REPORT_PHRASES = (
+    "生成报告",
+    "生成一个报告",
+    "生成一份报告",
+    "生成分析报告",
+    "形成报告",
+    "形成简报",
+    "导出报告",
+    "写一份报告",
+    "整理成报告",
+    "出一份报告",
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -27,6 +40,29 @@ class ContextResolution:
     query: str
     used_context: bool
     source_turn_id: str | None = None
+
+
+def looks_like_report_request(query: str) -> bool:
+    normalized = query.strip(" ，,。；;？?")
+    return any(phrase in normalized for phrase in REPORT_PHRASES)
+
+
+def find_report_source_turn(
+    turns: list[dict[str, Any]] | None,
+    source_turn_id: str | None = None,
+) -> dict[str, Any] | None:
+    if not turns:
+        return None
+    return next(
+        (
+            turn
+            for turn in reversed(turns)
+            if turn.get("intent") in REPORT_SOURCE_INTENTS
+            and isinstance(turn.get("sql_result"), dict)
+            and (source_turn_id is None or turn.get("turn_id") == source_turn_id)
+        ),
+        None,
+    )
 
 
 def looks_like_contextual_followup(query: str) -> bool:

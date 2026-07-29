@@ -9,6 +9,7 @@ from app.graph.nodes import (
     hybrid_node,
     persist_turn_node,
     rag_node,
+    report_agent_node,
     route_key,
     route_node,
     sql_node,
@@ -23,6 +24,7 @@ def build_graph(checkpointer: Any | None = None) -> Any:
     builder.add_node("sql", sql_node)
     builder.add_node("rag", rag_node)
     builder.add_node("hybrid", hybrid_node)
+    builder.add_node("report_agent", report_agent_node)
     builder.add_node("clarify", clarify_node)
     builder.add_node("general", general_node)
     builder.add_node("persist_turn", persist_turn_node)
@@ -35,12 +37,13 @@ def build_graph(checkpointer: Any | None = None) -> Any:
             "sql": "sql",
             "rag": "rag",
             "hybrid": "hybrid",
+            "report": "report_agent",
             "clarify": "clarify",
             "general": "general",
         },
     )
 
-    for node_name in ("sql", "rag", "hybrid", "clarify", "general"):
+    for node_name in ("sql", "rag", "hybrid", "report_agent", "clarify", "general"):
         builder.add_edge(node_name, "persist_turn")
     builder.add_edge("persist_turn", END)
 

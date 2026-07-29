@@ -47,6 +47,33 @@ class ChatMetrics(BaseModel):
     evidence_count: int | None = None
     citation_count: int | None = None
     context_used: bool | None = None
+    tool_round_count: int | None = None
+    tool_call_count: int | None = None
+    tool_latency_ms: float | None = None
+
+
+class ToolCallTrace(BaseModel):
+    tool_call_id: str
+    tool_name: str
+    arguments_summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolResultTrace(BaseModel):
+    tool_name: str
+    arguments_summary: dict[str, Any] = Field(default_factory=dict)
+    status: str
+    latency_ms: float
+    error_type: str | None = None
+    result_count: int | None = None
+
+
+class ReportArtifactResponse(BaseModel):
+    report_id: str
+    title: str
+    format: str
+    download_url: str
+    source_turn_id: str
+    created_at: datetime
 
 
 class ChatResponse(BaseModel):
@@ -60,6 +87,10 @@ class ChatResponse(BaseModel):
     sql_result: dict[str, Any] | None = None
     chart_spec: dict[str, Any] | None = None
     citations: list[Citation] = Field(default_factory=list)
+    tool_calls: list[ToolCallTrace] = Field(default_factory=list)
+    tool_results: list[ToolResultTrace] = Field(default_factory=list)
+    tool_round_count: int = 0
+    report_artifact: ReportArtifactResponse | None = None
     errors: list[str] = Field(default_factory=list)
     metrics: ChatMetrics = Field(default_factory=ChatMetrics)
 
@@ -77,6 +108,10 @@ class ChatTurn(BaseModel):
     sql_result: dict[str, Any] | None = None
     chart_spec: dict[str, Any] | None = None
     citations: list[Citation] = Field(default_factory=list)
+    tool_calls: list[ToolCallTrace] = Field(default_factory=list)
+    tool_results: list[ToolResultTrace] = Field(default_factory=list)
+    tool_round_count: int = 0
+    report_artifact: ReportArtifactResponse | None = None
     errors: list[str] = Field(default_factory=list)
     metrics: ChatMetrics = Field(default_factory=ChatMetrics)
 

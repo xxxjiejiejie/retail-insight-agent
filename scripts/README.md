@@ -22,6 +22,7 @@
 ## 会话与 SSE
 
 - `verify_session_stream.py --reset`：经公开 API 验证 SSE 事件顺序、最终结果和 SQLite 会话落库；默认使用 General 问题，不调用付费模型。
+- `evaluate_report_agent.py --live`：连续验证分析查询与报告追问，检查受控 ReAct 工具选择、报告产物和最大两次工具调用；默认拒绝运行，需明确外发授权。
 
 ## 综合评测
 

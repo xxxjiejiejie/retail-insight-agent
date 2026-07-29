@@ -57,6 +57,7 @@ const intentDetails: Record<Intent, { label: string; description: string }> = {
   sql: { label: "经营数据分析", description: "安全 Text-to-SQL" },
   rag: { label: "制度知识问答", description: "检索、重排与引用" },
   hybrid: { label: "综合经营研判", description: "数据与制度并行分析" },
+  report: { label: "分析报告生成", description: "受控 ReAct 与工具调用" },
   clarify: { label: "问题澄清", description: "补充必要查询条件" },
   general: { label: "通用问答", description: "智能助手直接回答" },
 }
@@ -157,6 +158,7 @@ if (isDemoMode.value) {
 const canSend = computed(() => query.value.trim().length >= 2 && !loading.value)
 const sqlRows = computed(() => result.value?.sql_result?.rows ?? [])
 const sqlColumns = computed(() => result.value?.sql_result?.columns ?? [])
+const toolResults = computed(() => result.value?.tool_results ?? [])
 const currentIntent = computed(() =>
   intentDetails[result.value?.intent ?? "general"],
 )
@@ -212,6 +214,8 @@ const metricItems = computed(() => {
     { label: "生成次数", value: metrics.attempt_count, unit: "次", icon: CircleCheck },
     { label: "有效证据", value: metrics.evidence_count, unit: "条", icon: Document },
     { label: "引用数", value: metrics.citation_count, unit: "条", icon: Collection },
+    { label: "工具调用", value: metrics.tool_call_count, unit: "次", icon: MagicStick },
+    { label: "工具耗时", value: metrics.tool_latency_ms, unit: "ms", icon: Timer },
   ].filter((item) => item.value !== undefined && item.value !== null)
 })
 
@@ -247,6 +251,7 @@ const nodeLabels: Record<string, string> = {
   sql: "生成并执行安全 SQL",
   rag: "检索与重排制度依据",
   hybrid: "并行分析经营数据与制度",
+  report_agent: "调用工具生成分析报告",
   clarify: "整理需要补充的条件",
   general: "生成通用回答",
   persist_turn: "保存本轮会话",
@@ -311,6 +316,10 @@ function reuseTurn(turn: ChatTurn): void {
     sql_result: turn.sql_result,
     chart_spec: turn.chart_spec,
     citations: turn.citations,
+    tool_calls: turn.tool_calls ?? [],
+    tool_results: turn.tool_results ?? [],
+    tool_round_count: turn.tool_round_count ?? 0,
+    report_artifact: turn.report_artifact,
     errors: turn.errors,
     metrics: turn.metrics,
   }
@@ -427,6 +436,7 @@ function closePolicyDetail(): void {
 }
 
 function demoResponseFor(queryText: string): ChatResponse {
+  if (queryText.includes("报告") || queryText.includes("简报")) return demoResponses.report
   if (queryText.includes("并说明") || queryText.includes("并依据") || queryText.includes("绩效")) {
     return demoResponses.hybrid
   }
@@ -567,6 +577,19 @@ function downloadCsv(): void {
   anchor.download = `retail-insight-${new Date().toISOString().slice(0, 10)}.csv`
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+function openReport(): void {
+  const artifact = result.value?.report_artifact
+  if (!artifact) return
+  if (isDemoMode.value) {
+    const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>${artifact.title}</title><body style="font-family:Arial,'Microsoft YaHei';max-width:860px;margin:40px auto;line-height:1.8"><h1>${artifact.title}</h1><p>演示报告：华东区域两家门店销售目标完成率低于 100%，建议优先复核客流、转化率与促销执行情况。</p><h2>数据说明</h2><p>本文件由前端演示数据生成，不调用模型或真实数据库。</p></body></html>`
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }))
+    window.open(url, "_blank", "noopener,noreferrer")
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    return
+  }
+  window.open(artifact.download_url, "_blank", "noopener,noreferrer")
 }
 
 onMounted(async () => {
@@ -910,6 +933,22 @@ onMounted(async () => {
                   相关度 {{ (result.citations[0].relevance_score * 100).toFixed(1) }}%
                 </span>
               </article>
+
+              <article v-if="result.report_artifact" class="content-card report-artifact-card">
+                <div class="section-heading compact">
+                  <div>
+                    <span class="section-kicker">REPORT ARTIFACT</span>
+                    <h3>分析报告</h3>
+                  </div>
+                  <Document />
+                </div>
+                <strong>{{ result.report_artifact.title }}</strong>
+                <p>HTML · 来源轮次 {{ result.report_artifact.source_turn_id.slice(0, 8) }}</p>
+                <el-button type="primary" @click="openReport">
+                  查看报告
+                  <el-icon><ArrowRight /></el-icon>
+                </el-button>
+              </article>
             </aside>
           </div>
 
@@ -1008,6 +1047,33 @@ onMounted(async () => {
           </div>
 
           <div v-show="activeTab === 'trace'" class="trace-layout">
+            <article v-if="toolResults.length" class="content-card tool-trace-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="section-kicker">TOOL CALLING</span>
+                  <h3>受控工具轨迹</h3>
+                </div>
+                <MagicStick />
+              </div>
+              <div class="tool-trace-list">
+                <div
+                  v-for="(toolResult, index) in toolResults"
+                  :key="`${toolResult.tool_name}-${index}`"
+                  class="tool-trace-row"
+                >
+                  <span class="tool-sequence">{{ String(index + 1).padStart(2, "0") }}</span>
+                  <div>
+                    <strong>{{ toolResult.tool_name }}</strong>
+                    <p>{{ JSON.stringify(toolResult.arguments_summary) }}</p>
+                  </div>
+                  <span class="tool-status" :class="`tool-${toolResult.status}`">
+                    {{ toolResult.status === "success" ? "成功" : "失败" }}
+                  </span>
+                  <time>{{ formatMetric(toolResult.latency_ms) }} ms</time>
+                </div>
+              </div>
+            </article>
+
             <article class="content-card">
               <div class="section-heading">
                 <div>

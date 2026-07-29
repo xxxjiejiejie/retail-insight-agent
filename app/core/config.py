@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     session_database_url: str = "sqlite+aiosqlite:///./data/runtime/sessions.db"
     history_result_rows: int = Field(default=100, ge=1, le=500)
     evaluation_runs_path: str = "./data/runtime/evaluation_runs"
+    report_output_path: str = "./data/runtime/reports"
+    report_tool_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
+    report_max_tool_calls: int = Field(default=2, ge=1, le=4)
 
     vector_store: str = "chroma"
     policy_documents_path: str = "./data/documents"

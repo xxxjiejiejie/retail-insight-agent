@@ -1008,6 +1008,11 @@ button.nav-item {
   background: #e7ecf6;
 }
 
+.intent-report {
+  color: #6b4f90;
+  background: #eee8f8;
+}
+
 .context-pill {
   color: #687b75;
   background: #edf2f0;
@@ -1231,6 +1236,24 @@ button.nav-item {
   font-size: 9px;
 }
 
+.report-artifact-card > strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #2c453d;
+  font-size: 13px;
+}
+
+.report-artifact-card > p {
+  margin: 0 0 16px;
+  color: #71827c;
+  font-size: 10px;
+}
+
+.report-artifact-card .el-button {
+  width: 100%;
+  border-radius: 8px;
+}
+
 .data-layout {
   display: grid;
   gap: 16px;
@@ -1419,6 +1442,64 @@ button.nav-item {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
   gap: 16px;
+}
+
+.tool-trace-panel {
+  grid-column: 1 / -1;
+}
+
+.tool-trace-list {
+  border-top: 1px solid #e5ece9;
+}
+
+.tool-trace-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 64px 84px;
+  gap: 14px;
+  align-items: center;
+  min-height: 72px;
+  border-bottom: 1px solid #e5ece9;
+}
+
+.tool-sequence {
+  color: var(--brand);
+  font: 700 11px "Cascadia Code", Consolas, monospace;
+}
+
+.tool-trace-row strong {
+  font-size: 12px;
+}
+
+.tool-trace-row p {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: #798a84;
+  font: 10px/1.5 "Cascadia Code", Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-trace-row time {
+  color: #64776f;
+  font-size: 10px;
+  text-align: right;
+}
+
+.tool-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  text-align: center;
+}
+
+.tool-success {
+  color: #176b4d;
+  background: #e8f3ee;
+}
+
+.tool-error {
+  color: #a0443b;
+  background: #faece9;
 }
 
 .metrics-grid {

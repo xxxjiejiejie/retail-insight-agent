@@ -4,6 +4,8 @@ import pytest
 from app.api.routes import chat as chat_module
 from app.api.routes import evaluation as evaluation_module
 from app.api.routes import metadata as metadata_module
+from app.api.routes import reports as reports_module
+from app.core.config import Settings
 from app.core.errors import DatabaseQueryError
 from app.database.schema import SchemaCatalog, SchemaColumn
 from app.evaluation.reports import save_evaluation_run
@@ -255,6 +257,35 @@ async def test_chat_stream_hides_internal_graph_errors(
 
 
 @pytest.mark.asyncio
+async def test_report_download_is_bound_to_session(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    report_id = "12345678-1234-1234-1234-123456789abc"
+    (tmp_path / f"{report_id}.html").write_text("<h1>安全报告</h1>", encoding="utf-8")
+    (tmp_path / f"{report_id}.json").write_text(
+        '{"session_id":"allowed-session"}',
+        encoding="utf-8",
+    )
+    settings = Settings(_env_file=None, report_output_path=str(tmp_path))
+    monkeypatch.setattr(reports_module, "get_settings", lambda: settings)
+
+    allowed = await client.get(
+        f"/api/v1/reports/{report_id}",
+        params={"session_id": "allowed-session"},
+    )
+    denied = await client.get(
+        f"/api/v1/reports/{report_id}",
+        params={"session_id": "other-session"},
+    )
+
+    assert allowed.status_code == 200
+    assert "安全报告" in allowed.text
+    assert denied.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_session_history_persists_and_can_be_deleted(
     client: httpx.AsyncClient,
     tmp_path,
@@ -335,6 +366,93 @@ async def test_contextual_followup_uses_checkpointed_analytical_turn(
             assert len(turns) == 2
             assert turns[-1]["query"] == "那华东呢"
             assert turns[-1]["context_used"] is True
+        finally:
+            del app.state.graph
+            del app.state.checkpointer
+
+
+@pytest.mark.asyncio
+async def test_report_followup_reuses_checkpointed_sql_result(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    async def fake_sql_handler(_: str) -> dict:
+        return {
+            "answer": "华东退货率最高。",
+            "generated_sql": "SELECT region, return_rate FROM metrics",
+            "sql_result": {
+                "columns": ["region", "return_rate"],
+                "rows": [{"region": "华东", "return_rate": 3.2}],
+                "row_count": 1,
+                "execution_ms": 1.0,
+                "executed_sql": "SELECT region, return_rate FROM metrics",
+            },
+            "chart_spec": None,
+            "errors": [],
+            "metrics": {},
+        }
+
+    async def fake_report_handler(
+        query: str,
+        *,
+        session_id: str,
+        source_turn: dict | None,
+    ) -> dict:
+        assert "报告" in query
+        assert session_id == "report-session"
+        assert source_turn is not None
+        assert source_turn["sql_result"]["rows"] == [
+            {"region": "华东", "return_rate": 3.2}
+        ]
+        return {
+            "answer": "报告已生成。",
+            "errors": [],
+            "tool_calls": [],
+            "tool_results": [],
+            "tool_round_count": 1,
+            "report_artifact": {
+                "report_id": "report-test",
+                "title": "退货率报告",
+                "format": "html",
+                "download_url": "/api/v1/reports/report-test?session_id=report-session",
+                "source_turn_id": source_turn["turn_id"],
+                "created_at": "2026-07-29T00:00:00+00:00",
+            },
+            "metrics": {"tool_call_count": 1},
+        }
+
+    monkeypatch.setattr(nodes, "handle_sql_question", fake_sql_handler)
+    monkeypatch.setattr(nodes, "handle_report_request", fake_report_handler)
+    async with open_checkpointer(str(tmp_path / "report-sessions.db")) as checkpointer:
+        graph = build_graph(checkpointer)
+        app.state.graph = graph
+        app.state.checkpointer = checkpointer
+        try:
+            first = await client.post(
+                "/api/v1/chat",
+                json={
+                    "query": "查询2026年第二季度各区域退货率",
+                    "session_id": "report-session",
+                },
+            )
+            second = await client.post(
+                "/api/v1/chat",
+                json={
+                    "query": "生成一个报告",
+                    "session_id": "report-session",
+                },
+            )
+
+            assert first.status_code == 200
+            assert second.status_code == 200
+            body = second.json()
+            assert body["intent"] == "report"
+            assert body["context_used"] is True
+            assert body["report_artifact"]["source_turn_id"]
+            history = await client.get("/api/v1/sessions/report-session")
+            assert len(history.json()["turns"]) == 2
+            assert history.json()["turns"][-1]["intent"] == "report"
         finally:
             del app.state.graph
             del app.state.checkpointer

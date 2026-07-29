@@ -1,0 +1,62 @@
+[
+  {
+    "id": "REPORT-001",
+    "source_query": "查询2026年第二季度各区域销售额",
+    "followup": "生成一份分析报告",
+    "expected_tools": ["render_analysis_report"]
+  },
+  {
+    "id": "REPORT-002",
+    "source_query": "查询2026年6月各门店销售目标完成率是多少？",
+    "followup": "根据结果生成报告，并补充绩效制度依据",
+    "expected_tools": ["search_policy_evidence", "render_analysis_report"]
+  },
+  {
+    "id": "REPORT-003",
+    "source_query": "查询2026年第二季度各区域退货率",
+    "followup": "整理成一份退货率分析报告",
+    "expected_tools": ["render_analysis_report"]
+  },
+  {
+    "id": "REPORT-004",
+    "source_query": "查询2026年6月各门店订单数",
+    "followup": "生成管理层简报，并说明异常订单处理建议",
+    "expected_tools": ["search_policy_evidence", "render_analysis_report"]
+  },
+  {
+    "id": "REPORT-005",
+    "source_query": "查询2026年6月各区域库存总量",
+    "followup": "把刚才的数据生成报告",
+    "expected_tools": ["render_analysis_report"]
+  },
+  {
+    "id": "REPORT-006",
+    "source_query": "查询2026年第二季度各区域销售额，并说明绩效制度中的指标权重",
+    "followup": "基于这次综合分析生成报告",
+    "expected_tools": ["render_analysis_report"]
+  },
+  {
+    "id": "REPORT-007",
+    "source_query": "查询2026年6月各门店毛利",
+    "followup": "出一份经营分析报告，包含关键发现和建议",
+    "expected_tools": ["render_analysis_report"]
+  },
+  {
+    "id": "REPORT-008",
+    "source_query": "查询2026年6月新增会员数",
+    "followup": "生成一个报告，并引用相关会员制度",
+    "expected_tools": ["search_policy_evidence", "render_analysis_report"]
+  },
+  {
+    "id": "REPORT-009",
+    "source_query": "查询2026年6月异常订单数量",
+    "followup": "导出异常订单分析报告",
+    "expected_tools": ["render_analysis_report"]
+  },
+  {
+    "id": "REPORT-010",
+    "source_query": "查询2026年第二季度各区域退货率，并说明退换货处理规则",
+    "followup": "根据数据和制度依据生成一份报告",
+    "expected_tools": ["render_analysis_report"]
+  }
+]

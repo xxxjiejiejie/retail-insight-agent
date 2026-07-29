@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.graph.context import resolve_contextual_query
+from app.graph.context import find_report_source_turn, resolve_contextual_query
 from app.graph.nodes import route_node
 
 
@@ -61,3 +61,21 @@ def test_resolves_filter_only_followup() -> None:
 
     assert resolution.used_context is True
     assert "只看未达标门店" in resolution.query
+
+
+def test_report_request_routes_to_latest_structured_analysis() -> None:
+    previous = {
+        **analytical_turn("查询2026年第二季度各区域退货率"),
+        "sql_result": {"columns": ["region"], "rows": [{"region": "华东"}]},
+    }
+    state = route_node(
+        {
+            "user_query": "根据这些结果生成一份报告",
+            "turns": [previous],
+        }
+    )
+
+    assert state["intent"] == "report"
+    assert state["context_used"] is True
+    assert state["context_source_turn_id"] == "turn-1"
+    assert find_report_source_turn([previous]) == previous

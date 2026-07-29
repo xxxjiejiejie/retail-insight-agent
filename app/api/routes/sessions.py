@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Path, Request, status
 
+from app.api.routes.reports import delete_session_reports
 from app.api.schemas import SessionDeleteResponse, SessionHistoryResponse
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -39,4 +40,5 @@ async def delete_session(
 ) -> SessionDeleteResponse:
     checkpointer = runtime_component(request, "checkpointer")
     await checkpointer.adelete_thread(session_id)
+    delete_session_reports(session_id)
     return SessionDeleteResponse(session_id=session_id, deleted=True)

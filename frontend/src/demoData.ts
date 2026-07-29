@@ -115,6 +115,63 @@ export const demoSchemaMetadata: SchemaMetadataResponse = {
 }
 
 export const demoResponses: Record<string, ChatResponse> = {
+  report: {
+    session_id: demoSessionId,
+    intent: "report",
+    resolved_query: "根据上一轮结果生成一份分析报告",
+    context_used: true,
+    answer: "报告《2026 年 6 月门店销售目标完成分析》已生成。完整内容和数据来源已写入报告文件。",
+    generated_sql: null,
+    sql_result: null,
+    chart_spec: null,
+    citations: [],
+    tool_calls: [
+      {
+        tool_call_id: "demo-report-call",
+        tool_name: "render_analysis_report",
+        arguments_summary: {
+          title: "2026 年 6 月门店销售目标完成分析",
+          report_type: "analysis",
+          include_chart: true,
+          section_count: 4,
+        },
+      },
+    ],
+    tool_results: [
+      {
+        tool_name: "render_analysis_report",
+        arguments_summary: {
+          title: "2026 年 6 月门店销售目标完成分析",
+          report_type: "analysis",
+          include_chart: true,
+          section_count: 4,
+        },
+        status: "success",
+        latency_ms: 34.6,
+        result_count: 1,
+      },
+    ],
+    tool_round_count: 1,
+    report_artifact: {
+      report_id: "demo-report",
+      title: "2026 年 6 月门店销售目标完成分析",
+      format: "html",
+      download_url: "",
+      source_turn_id: "demo-source-turn",
+      created_at: "2026-07-29T00:00:00+00:00",
+    },
+    errors: [],
+    metrics: {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      tool_round_count: 1,
+      tool_call_count: 1,
+      tool_latency_ms: 34.6,
+      total_latency_ms: 240,
+      context_used: true,
+    },
+  },
   sql: {
     session_id: demoSessionId,
     intent: "sql",
@@ -253,6 +310,10 @@ export function demoTurn(response: ChatResponse, query: string): ChatTurn {
     sql_result: response.sql_result,
     chart_spec: response.chart_spec,
     citations: response.citations,
+    tool_calls: response.tool_calls ?? [],
+    tool_results: response.tool_results ?? [],
+    tool_round_count: response.tool_round_count ?? 0,
+    report_artifact: response.report_artifact,
     errors: response.errors,
     metrics: response.metrics,
   }

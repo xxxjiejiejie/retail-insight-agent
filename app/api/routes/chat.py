@@ -36,6 +36,10 @@ def initial_state(request: ChatRequest) -> dict[str, Any]:
         "errors": [],
         "retrieved_docs": [],
         "citations": [],
+        "tool_calls": [],
+        "tool_results": [],
+        "tool_round_count": 0,
+        "report_artifact": None,
         "metrics": {},
     }
 
@@ -52,6 +56,10 @@ def response_from_state(request: ChatRequest, state: dict[str, Any]) -> ChatResp
         sql_result=state.get("sql_result"),
         chart_spec=state.get("chart_spec"),
         citations=state.get("citations", []),
+        tool_calls=state.get("tool_calls", []),
+        tool_results=state.get("tool_results", []),
+        tool_round_count=state.get("tool_round_count", 0),
+        report_artifact=state.get("report_artifact"),
         errors=state.get("errors", []),
         metrics=state.get("metrics", {}),
     )

@@ -85,3 +85,4 @@ module = [
   "fitz.*",
 ]
 follow_imports = "skip"
+ignore_missing_imports = true

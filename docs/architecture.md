@@ -1,6 +1,6 @@
 # v1.1 架构说明
 
-Retail Insight Agent 由 Vue 3 分析工作台、FastAPI API、LangGraph 工作流、MySQL 经营数据库和本地制度 RAG 组成。系统把自然语言问题路由到 SQL、RAG、Hybrid、Clarify 或 General 分支，并统一返回答案、数据、图表配置、制度引用和运行指标。
+Retail Insight Agent 由 Vue 3 分析工作台、FastAPI API、LangGraph 工作流、MySQL 经营数据库和本地制度 RAG 组成。系统把自然语言问题路由到 SQL、RAG、Hybrid、受控报告 Agent、Clarify 或 General 分支，并统一返回答案、数据、图表配置、制度引用、工具轨迹和运行指标。
 
 ## 系统总览
 
@@ -13,9 +13,13 @@ flowchart LR
     Context --> SQL["SQL 分支"]
     Context --> RAG["RAG 分支"]
     Context --> Hybrid["Hybrid 分支"]
+    Context --> Report["受控 ReAct 报告 Agent"]
     Context --> Clarify["Clarify / General"]
     Hybrid --> SQL
     Hybrid --> RAG
+    Report --> PolicyTool["search_policy_evidence"]
+    Report --> RenderTool["render_analysis_report"]
+    RenderTool --> Artifact["HTML 报告 + 下载 API"]
 
     SQL --> MySQL[("MySQL 只读账号")]
     RAG --> Chroma["Chroma + BGE Embedding"]
@@ -42,10 +46,12 @@ flowchart LR
 1. Vue 将自然语言问题和保存在浏览器中的 `session_id` 发送到 `POST /api/v1/chat/stream`。
 2. FastAPI 创建本轮 `AgentState`，LangGraph 从对应 `thread_id` 恢复会话状态。
 3. `resolve_contextual_query` 判断输入是否为短追问；符合条件时，将其与最近一次 SQL、RAG 或 Hybrid 问题组合为 `resolved_query`，并记录 `context_used`。
-4. 确定性 Router 将问题分到 SQL、RAG、Hybrid、Clarify 或 General。
+4. 确定性 Router 将问题分到 SQL、RAG、Hybrid、Report、Clarify 或 General。报告请求先绑定当前会话最近一条带结构化 SQL 结果的 SQL/Hybrid turn。
 5. SQL 分支查询真实 Schema、生成并校验 SQL，再用只读账号执行；RAG 分支完成混合检索、重排、证据筛选和带引用回答；Hybrid 分支并行运行 SQL 与 RAG。
 6. 公共 `persist_turn` 节点保存轻量结果快照，`AsyncSqliteSaver` 将图状态写入 `data/runtime/sessions.db`。
 7. FastAPI 通过 SSE 发送节点进度、心跳、最终结果和结束事件；Vue 展示结论、SQL、表格、ECharts 图表、引用和指标。
+
+报告请求进入 `report_agent` 后，最多运行两次受控 Tool Calling：模型可先调用 `search_policy_evidence` 补充制度片段，再调用 `render_analysis_report` 生成 HTML 文件。Agent 不允许动态工具、任意 SQL、Shell、路径或跨会话访问；工具参数由 Pydantic 严格模型校验，渲染器对模型文本进行 HTML 转义。
 
 ## 路由与上下文追问
 
@@ -137,6 +143,21 @@ Hybrid 问题
 
 当前合并方式是拼接两个分支答案，尚未增加第三次统一总结调用，因此不会引入额外一次 LLM 成本。
 
+## 多轮报告 Agent
+
+```text
+上一轮 SQL / Hybrid 结果
+→ 用户“生成报告”追问
+→ report 路由绑定 source_turn_id
+→ LLM 选择工具
+→ 可选 search_policy_evidence
+→ render_analysis_report
+→ data/runtime/reports/{report_id}.html
+→ 会话绑定的报告下载 API
+```
+
+报告 Agent 是局部 ReAct，而不是把 SQL、RAG、Hybrid 节点改成不可预测的自主循环。模型只看到当前会话的安全结果快照；工具返回的制度片段被作为不可信资料处理，不能改变工具白名单或执行系统指令。报告内容使用结构化章节，文件名和落盘路径由服务端生成，HTML 内容统一转义。
+
 ## 会话持久化与 SSE
 
 ```text
@@ -170,6 +191,7 @@ SSE 事件包括 `start`、`node`、`heartbeat`、`result`、`error` 和 `done`�
 LangSmith 是可选的外部运行可观测层，通过 `LANGSMITH_TRACING=true` 和本地 API Key 启用。每次 API 请求创建一棵 Trace，包含：
 
 - LangGraph Router、SQL、RAG、Hybrid、Clarify、General 和持久化节点；
+- `report_agent` 节点以及 `tool.search_policy_evidence`、`tool.render_analysis_report` Tool Span；
 - DeepSeek LLM Span，包括模型、Token 和延迟；
 - `sql.execute` Span，包括 SQL、列名、行数和执行耗时；
 - `rag.retrieve` 与 `rag.rerank` Span，包括 Top-K、文档 ID、章节和分数；
@@ -198,4 +220,5 @@ Docker Compose 包含：
 - Hybrid 没有第三次统一总结调用；
 - RAG 尚未使用独立裁判模型评估逐句事实一致性；
 - 认证、细粒度权限、审计、限流和线上监控不在当前离线实现范围；
+- 报告 Agent 首版只生成 HTML，尚未提供 DOCX/PDF 原生导出、异步队列和长会话摘要；
 - 当前评测集为原创模拟数据，结果不能直接解释为生产环境准确率。
