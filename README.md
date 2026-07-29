@@ -9,7 +9,7 @@
 
 当前真实评测批次：`v11-multiturn-resilience-20260726`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`。评测结果不等同于生产环境准确率，数据为原创模拟零售场景。完整指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
 
-面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Clarify 或 General 分支。
+面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Report、Clarify 或 General 分支。
 
 ## 项目概述
 
@@ -34,11 +34,21 @@
 | -------------------------------------------------------- | ------------------------------------------------- |
 | ![经营数据库 Schema](docs/screenshots/schema-drawer.png) | ![制度知识库](docs/screenshots/policy-drawer.png) |
 
+### 报告生成与受控 ReAct
+
+用户完成 SQL 或 Hybrid 分析后，可以在同一会话中继续要求生成报告。`report_agent` 会复用来源轮次的数据结果，按需检索制度依据，并通过白名单工具生成带数据来源的 HTML 报告。
+
+![报告 Agent 工作台](docs/screenshots/report-agent-workbench.png)
+
+生成的报告保留执行摘要、数据概览、关键发现、制度依据、查询明细和来源 SQL；文件路径和报告 ID 由服务端生成，模型不能传入本地路径或任意 HTML。
+
+![HTML 分析报告](docs/screenshots/report-html-preview.png)
+
 ### LangSmith 运行可观测性
 
-真实 Hybrid 请求会在 LangSmith 中展示 LangGraph 路由、Hybrid 并行分支、两次 DeepSeek 调用、RAG 召回与重排、SQL 执行和会话持久化。追踪数据经过密钥脱敏、数据库结果行省略和制度片段截断后再发送。
+真实 Hybrid 请求会在 LangSmith 中展示 LangGraph 路由、Hybrid 并行分支、两次 DeepSeek 调用、RAG 召回与重排、SQL 执行和会话持久化。报告请求还会展示 `report_agent`、受控 LLM 决策、`tool.search_policy_evidence` 和 `tool.render_analysis_report`。追踪数据经过密钥脱敏、数据库结果行省略、制度片段截断和报告正文省略后再发送。
 
-![LangSmith Hybrid 调用链](docs/screenshots/langsmith-hybrid-trace.png)
+![LangSmith 报告 Agent 调用链](docs/screenshots/langsmith-report-agent-trace.png)
 
 访问 `http://localhost:8080/?demo=1` 可进入零 Token 演示模式。
 
@@ -136,6 +146,66 @@ flowchart LR
     Report --> RenderTool["HTML 报告工具"]
     RenderTool --> Artifact["报告文件 + 下载 API"]
     Graph --> Session[("AsyncSqliteSaver")]
+```
+
+### LangGraph 主工作流
+
+核心 SQL、RAG 和 Hybrid 链路继续使用确定性编排，报告生成作为独立 `report_agent` 分支接入。所有分支最终进入 `persist_turn`，统一保存安全结果快照。
+
+```mermaid
+flowchart TB
+    START(("START")) --> route["route<br/>Context Resolver + Intent Router"]
+
+    route -->|sql| sql["sql<br/>安全 Text-to-SQL"]
+    route -->|rag| rag["rag<br/>制度 RAG"]
+    route -->|hybrid| hybrid["hybrid<br/>SQL + RAG 并行"]
+    route -->|report| report["report_agent<br/>分析报告 Agent"]
+    route -->|clarify| clarify["clarify<br/>问题澄清"]
+    route -->|general| general["general<br/>通用回答"]
+
+    sql --> persist["persist_turn<br/>保存安全会话快照"]
+    rag --> persist
+    hybrid --> persist
+    report --> persist
+    clarify --> persist
+    general --> persist
+
+    persist --> checkpoint[("AsyncSqliteSaver<br/>SQLite 最近 20 轮")]
+    persist --> END(("END"))
+
+    classDef core fill:#e9f5f0,stroke:#168269,color:#17332d
+    classDef agent fill:#eee8f8,stroke:#8664b7,color:#3f3159
+    classDef store fill:#eef1fb,stroke:#7285bc,color:#26365f
+
+    class route,sql,rag,hybrid,clarify,general,persist core
+    class report agent
+    class checkpoint store
+```
+
+### 报告 Agent 内部受控 ReAct
+
+`report_agent` 最多执行两个工具调用。只有报告需要制度依据时才调用制度检索工具，最终必须通过报告渲染工具生成产物；未知工具、无效参数、超时和调用超限都会返回安全失败结果。
+
+```mermaid
+flowchart LR
+    report["report_agent"] --> decision["LLM 决策"]
+
+    decision -->|需要制度依据时| search["search_policy_evidence"]
+    search --> result["Tool Result<br/>制度证据"]
+    result -->|下一轮<br/>最多两个工具调用| decision
+
+    decision -->|必须生成报告| render["render_analysis_report"]
+    render --> artifact["HTML 报告产物<br/>report_id + download_url"]
+
+    decision -->|未调用工具或工具失败| failure["安全失败结果"]
+
+    classDef agent fill:#eee8f8,stroke:#8664b7,color:#3f3159
+    classDef tool fill:#fff1df,stroke:#d08a32,color:#5d3d12
+    classDef resultStyle fill:#e9f5f0,stroke:#168269,color:#17332d
+
+    class report,decision,failure agent
+    class search,render tool
+    class result,artifact resultStyle
 ```
 
 详细调用链见 [docs/architecture.md](docs/architecture.md)。
