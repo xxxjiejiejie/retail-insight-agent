@@ -80,12 +80,12 @@ async def test_schema_metadata_hides_database_error(
 
 
 @pytest.mark.asyncio
-async def test_policy_metadata_lists_eight_documents(client: httpx.AsyncClient) -> None:
+async def test_policy_metadata_lists_expanded_corpus(client: httpx.AsyncClient) -> None:
     response = await client.get("/api/v1/metadata/policies")
 
     assert response.status_code == 200
     documents = response.json()["documents"]
-    assert len(documents) == 8
+    assert len(documents) == 100
     assert all(document["section_count"] > 0 for document in documents)
     assert all(document["chunk_count"] > 0 for document in documents)
 

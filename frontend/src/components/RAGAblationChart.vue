@@ -1,0 +1,106 @@
+<script setup lang="ts">
+import { BarChart } from "echarts/charts"
+import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components"
+import * as echarts from "echarts/core"
+import { CanvasRenderer } from "echarts/renderers"
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
+
+import type {
+  RAGAblationPipeline,
+  RAGAblationPipelineMetrics,
+} from "../types"
+
+echarts.use([BarChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
+
+const props = defineProps<{
+  pipelines: Record<RAGAblationPipeline, RAGAblationPipelineMetrics>
+}>()
+
+const element = ref<HTMLDivElement | null>(null)
+let chart: echarts.ECharts | null = null
+let resizeObserver: ResizeObserver | null = null
+const pipelineOrder: RAGAblationPipeline[] = ["vector", "bm25", "rrf", "rrf_reranker"]
+
+function percentage(value: number): number {
+  return Math.round(value * 1000) / 10
+}
+
+async function render(): Promise<void> {
+  if (!element.value) return
+  await nextTick()
+  chart?.dispose()
+  chart = echarts.init(element.value)
+  chart.setOption({
+    animationDuration: 350,
+    textStyle: {
+      color: "#52645f",
+      fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", sans-serif',
+    },
+    grid: { left: 18, right: 16, top: 52, bottom: 18, containLabel: true },
+    legend: { top: 6, right: 4, icon: "circle", itemWidth: 8, itemHeight: 8 },
+    tooltip: {
+      trigger: "axis",
+      valueFormatter: (value: unknown) => `${value}%`,
+      borderWidth: 0,
+      backgroundColor: "#142c27",
+      textStyle: { color: "#fff" },
+    },
+    xAxis: {
+      type: "category",
+      data: pipelineOrder.map((pipeline) => props.pipelines[pipeline].label),
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: "#dfe7e4" } },
+      axisLabel: { color: "#52645f", fontWeight: 700 },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: 100,
+      axisLabel: { color: "#71837d", formatter: "{value}%" },
+      splitLine: { lineStyle: { color: "#e9efed", type: "dashed" } },
+    },
+    series: [
+      {
+        name: "Hit@5",
+        type: "bar",
+        data: pipelineOrder.map((pipeline) => percentage(props.pipelines[pipeline].hit_at_5)),
+        barMaxWidth: 24,
+        itemStyle: { color: "#168269", borderRadius: [4, 4, 1, 1] },
+      },
+      {
+        name: "MRR@5",
+        type: "bar",
+        data: pipelineOrder.map((pipeline) => percentage(props.pipelines[pipeline].mrr_at_5)),
+        barMaxWidth: 24,
+        itemStyle: { color: "#4f8fa8", borderRadius: [4, 4, 1, 1] },
+      },
+      {
+        name: "nDCG@5",
+        type: "bar",
+        data: pipelineOrder.map((pipeline) => percentage(props.pipelines[pipeline].ndcg_at_5)),
+        barMaxWidth: 24,
+        itemStyle: { color: "#d59b51", borderRadius: [4, 4, 1, 1] },
+      },
+    ],
+  })
+}
+
+watch(() => props.pipelines, render, { deep: true })
+
+onMounted(() => {
+  render()
+  if (element.value) {
+    resizeObserver = new ResizeObserver(() => chart?.resize())
+    resizeObserver.observe(element.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  chart?.dispose()
+})
+</script>
+
+<template>
+  <div ref="element" class="rag-ablation-chart" aria-label="RAG 检索消融实验指标对比图" />
+</template>

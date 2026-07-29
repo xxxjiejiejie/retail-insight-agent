@@ -237,6 +237,53 @@ export interface EvaluationFailure {
   latency_ms?: number | null
 }
 
+export type RAGAblationPipeline = "vector" | "bm25" | "rrf" | "rrf_reranker"
+
+export interface RAGAblationPipelineMetrics {
+  label: string
+  hit_at_5: number
+  mrr_at_5: number
+  ndcg_at_5: number
+  p50_latency_ms: number
+  p95_latency_ms: number
+  evaluated_answerable_cases: number
+  failure_count: number
+  negative_nonempty_rate: number
+  negative_mean_top_score: number
+}
+
+export interface RAGAblationFailure {
+  pipeline: RAGAblationPipeline
+  case_id: string
+  split: string
+  category: string
+  question: string
+  expected_document_ids: string[]
+  retrieved_document_ids: string[]
+  retrieved_chunk_ids: string[]
+}
+
+export interface RAGAblationReport {
+  generated_at: string
+  dataset_version: string
+  top_k: number
+  total_cases: number
+  answerable_cases: number
+  negative_cases: number
+  corpus: {
+    document_count: number
+    chunk_count: number
+    domain_count: number
+    corpus_version: string
+  }
+  pipelines: Record<RAGAblationPipeline, RAGAblationPipelineMetrics>
+  negative_summary: {
+    case_count?: number
+    note?: string
+  }
+  failures: RAGAblationFailure[]
+}
+
 export interface EvaluationRunSummary {
   run_id: string
   label: string
@@ -258,6 +305,7 @@ export interface EvaluationRunSummary {
 
 export interface EvaluationRun extends EvaluationRunSummary {
   failures: EvaluationFailure[]
+  rag_ablation?: RAGAblationReport | null
   source_reports: string[]
   notes: string[]
 }

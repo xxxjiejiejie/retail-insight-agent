@@ -236,6 +236,50 @@ class EvaluationFailureResponse(BaseModel):
     latency_ms: float | None = None
 
 
+class RAGAblationPipelineMetricsResponse(BaseModel):
+    label: str
+    hit_at_5: float
+    mrr_at_5: float
+    ndcg_at_5: float
+    p50_latency_ms: float
+    p95_latency_ms: float
+    evaluated_answerable_cases: int
+    failure_count: int
+    negative_nonempty_rate: float
+    negative_mean_top_score: float
+
+
+class RAGAblationCorpusResponse(BaseModel):
+    document_count: int
+    chunk_count: int
+    domain_count: int
+    corpus_version: str
+
+
+class RAGAblationFailureResponse(BaseModel):
+    pipeline: str
+    case_id: str
+    split: str
+    category: str
+    question: str
+    expected_document_ids: list[str] = Field(default_factory=list)
+    retrieved_document_ids: list[str] = Field(default_factory=list)
+    retrieved_chunk_ids: list[str] = Field(default_factory=list)
+
+
+class RAGAblationResponse(BaseModel):
+    generated_at: datetime
+    dataset_version: str
+    top_k: int
+    total_cases: int
+    answerable_cases: int
+    negative_cases: int
+    corpus: RAGAblationCorpusResponse
+    pipelines: dict[str, RAGAblationPipelineMetricsResponse]
+    negative_summary: dict[str, Any] = Field(default_factory=dict)
+    failures: list[RAGAblationFailureResponse] = Field(default_factory=list)
+
+
 class EvaluationRunSummaryResponse(BaseModel):
     run_id: str
     label: str
@@ -257,6 +301,7 @@ class EvaluationRunSummaryResponse(BaseModel):
 
 class EvaluationRunResponse(EvaluationRunSummaryResponse):
     failures: list[EvaluationFailureResponse] = Field(default_factory=list)
+    rag_ablation: RAGAblationResponse | None = None
     source_reports: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 

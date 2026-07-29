@@ -2510,6 +2510,158 @@ button.nav-item {
   height: 300px;
 }
 
+.rag-ablation-scope {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.rag-ablation-scope article,
+.rag-ablation-metrics-grid article {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #dce6e2;
+  border-radius: 8px;
+  background: #f9fbfa;
+}
+
+.rag-ablation-scope span,
+.rag-ablation-scope small,
+.rag-ablation-metrics-grid > article > span {
+  display: block;
+  color: #74867f;
+  font-size: 9px;
+}
+
+.rag-ablation-scope strong {
+  display: block;
+  margin: 7px 0 3px;
+  color: #29463d;
+  font: 700 21px "Cascadia Code", Consolas, monospace;
+}
+
+.rag-ablation-scope small {
+  color: #87958f;
+  font-size: 8px;
+}
+
+.rag-ablation-scope .rag-version {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.rag-ablation-chart {
+  width: 100%;
+  min-width: 0;
+  height: 310px;
+  overflow: hidden;
+}
+
+.rag-ablation-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rag-ablation-metrics-grid article.highlight {
+  border-color: #98cbb9;
+  background: #f1faf6;
+}
+
+.rag-ablation-metrics-grid article > strong {
+  display: block;
+  margin: 8px 0 12px;
+  color: #29463d;
+  font: 700 24px "Cascadia Code", Consolas, monospace;
+}
+
+.rag-ablation-metrics-grid dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+}
+
+.rag-ablation-metrics-grid dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 7px 0;
+  border-top: 1px solid #e5ece9;
+}
+
+.rag-ablation-metrics-grid dt {
+  color: #83918c;
+  font-size: 8px;
+}
+
+.rag-ablation-metrics-grid dd {
+  margin: 0;
+  color: #38554c;
+  font: 700 8px "Cascadia Code", Consolas, monospace;
+}
+
+.rag-ablation-failures {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.rag-ablation-failure-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #52645f;
+  font-size: 9px;
+}
+
+.rag-ablation-failure-heading span {
+  color: #87958f;
+}
+
+.rag-ablation-failures article {
+  display: grid;
+  grid-template-columns: 105px minmax(0, 1fr) 250px;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border-left: 3px solid #d59b51;
+  background: #fffaf0;
+}
+
+.rag-ablation-failures article > span {
+  color: #8c6b31;
+  font: 700 8px "Cascadia Code", Consolas, monospace;
+}
+
+.rag-ablation-failures article strong {
+  color: #5e4a46;
+  font-size: 9px;
+}
+
+.rag-ablation-failures article p {
+  margin: 3px 0 0;
+  color: #8b716c;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.rag-ablation-failures article small {
+  color: #8b716c;
+  font-size: 8px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.rag-ablation-note {
+  margin: 12px 0 0;
+  color: #82908b;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
 .failure-filter {
   display: flex;
   border: 1px solid #d6e2de;

@@ -5,9 +5,9 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
 ![Vue](<https://img.shields.io/badge/Frontend-Vue%203-42B883?logo=vuedotjs&logoColor=white>)
-![Tests](<https://img.shields.io/badge/tests-115%20passed%20%7C%203%20skipped-2ea44f>)
+![Tests](<https://img.shields.io/badge/tests-117%20passed%20%7C%203%20skipped-2ea44f>)
 
-当前真实评测批次：`v11-multiturn-resilience-20260726`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`。评测结果不等同于生产环境准确率，数据为原创模拟零售场景。完整指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
+当前端到端基线为 `v11-multiturn-resilience-20260726`，RAG 检索消融批次为 `v12-rag-ablation-20260729`。正常集 `55/55`、挑战集 `12/12`、真实多轮 `8/8`、故障恢复 `3/3`；消融实验覆盖 100 份原创模拟制度和 80 条 chunk 级问题。评测结果不等同于生产环境准确率。完整端到端指标见 [v1.1 评测摘要](docs/EVALUATION_V11.md)。
 
 面向中小零售企业的经营分析与制度知识问答智能体。用户可以用自然语言查询 MySQL 中的经营数据，也可以查询原创模拟制度；LangGraph 将问题路由到 SQL、RAG、Hybrid、Report、Clarify 或 General 分支。
 
@@ -80,12 +80,12 @@
 - 基础上下文追问解析：将“那华东呢”“换成五月”“只看未达标门店”“这个制度的申诉期限呢”等短追问与最近一次分析问题组合，不增加额外 LLM 调用；Hybrid 追问会同时传给 SQL 与 RAG 子分支；
 - 统一 100 项本地评测：30 条 SQL 参考执行、20 条 RAG 召回/拒答、25 条路由、10 条 Hybrid 拆分和 15 条 SQL 安全边界；
 - SSE 内部失败返回统一安全错误，不向页面暴露连接信息或堆栈；
-- Python 3.12、118 个 pytest 用例（115 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
+- Python 3.12、120 个 pytest 用例（117 个通过、3 个按环境跳过）、Ruff、MyPy 和可重复评测脚本。
 
 前端交互与运行模式：
 
 - Checkpointer 保存每轮轻量结果快照，历史会话可恢复对应回答、SQL、表格、图表、引用和指标；SQL 历史行数最多保存前 100 行并保留原始总行数；
-- “经营数据库”和“制度知识库”提供只读元数据抽屉，分别查看真实表字段和 8 份制度目录；
+- “经营数据库”和“制度知识库”提供只读元数据抽屉，分别查看真实表字段和 100 份原创模拟制度目录；
 - `?demo=1` 进入前端演示模式，使用内置 SQL/RAG/Hybrid 样例，不调用 DeepSeek、不访问真实数据库、不写入真实会话；
 - 报告结果会在运行轨迹中展示工具名称、状态、参数摘要和耗时，并提供报告产物入口；
 - 页面启动时实际检查 API、经营数据库和制度知识库状态，并提供检查中、正常、异常和演示四类提示。
@@ -402,6 +402,12 @@ npm.cmd run dev
 访问 [http://localhost:5173](http://localhost:5173)。图表由后端白名单 `chart_spec` 和真实 SQL 结果驱动，支持柱状图、折线图、饼图和数值轴散点图，不使用生图模型。
 
 ## 测试与评测
+
+### RAG 检索消融实验
+
+本版本将制度库扩充到 100 份原创模拟制度、484 个稳定 chunk，并建立 80 条 chunk 级 Ground Truth（70 条可回答、10 条库外诊断题）。`evaluate_rag_ablation.py` 在完全本地的 Vector、BM25、RRF、RRF + BGE Reranker 四组 Pipeline 上计算 Hit@5、MRR@5、nDCG@5、P50/P95 延迟和失败样本，不调用 DeepSeek、LangSmith 或数据库。
+
+最近批次 `v12-rag-ablation-20260729` 的 RRF + BGE Reranker 指标为 Hit@5 `84.3%`、MRR@5 `82.5%`、nDCG@5 `82.4%`。运行 `archive_evaluation_run.py` 后，评测结果页会展示语料规模、四组 Pipeline 对比图、延迟和失败样本；库外问题不混入三项排序指标。
 
 ```powershell
 python -m ruff check app tests scripts

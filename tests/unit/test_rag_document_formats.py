@@ -66,6 +66,7 @@ def test_pdf_loader_rejects_scanned_document(
             self.pages = [SimpleNamespace(extract_text=lambda: "")]
 
     monkeypatch.setitem(sys.modules, "pypdf", SimpleNamespace(PdfReader=FakeReader))
+    monkeypatch.setattr("app.rag.ocr.get_ocr_client", lambda: None)
     with pytest.raises(ValueError, match="OCR"):
         load_policy_document(pdf_path)
 

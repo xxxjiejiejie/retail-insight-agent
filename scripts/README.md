@@ -10,6 +10,13 @@
 
 ## RAG
 
+RAG corpus and ablation workflow:
+
+- `generate_policy_corpus.py` keeps the eight seed policies and creates 92 original synthetic retail SOPs, producing 100 documents across 10 domains.
+- `validate_policy_corpus.py` checks metadata, stable IDs, duplicate bodies, chunk counts, and domain distribution.
+- `build_rag_ground_truth.py` creates 80 chunk-level cases (70 answerable, 10 out-of-corpus) without using retrieval rankings as labels.
+- `evaluate_rag_ablation.py` compares Vector, BM25, RRF, and RRF + BGE Reranker with Hit@5, MRR@5, nDCG@5, P50/P95 latency, and failure samples. It is local-only and does not call an LLM, LangSmith, or a database.
+
 - `index_policies.py`：解析 Markdown/PDF/DOCX 制度，按文件哈希增量更新 Chroma 与 BM25 语料；`--full-rebuild` 可强制全量重建。
 - `verify_ocr.py`：临时生成一页无敏感内容的图片型 PDF，通过完整文档加载链路验证 Qwen3.7 Plus OCR 回退；会产生一次外部模型调用，不读取制度目录。
 - `verify_langsmith.py`：发送脱敏隐私探针并读回 Trace；`--live-llm` 额外验证一次真实 DeepSeek LLM Span。

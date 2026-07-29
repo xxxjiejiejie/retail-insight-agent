@@ -16,13 +16,18 @@ import type {
   EvaluationBranch,
   EvaluationRun,
   EvaluationRunSummary,
+  RAGAblationPipeline,
 } from "../types"
 
 const EvaluationMetricsChart = defineAsyncComponent(
   () => import("./EvaluationMetricsChart.vue"),
 )
+const RAGAblationChart = defineAsyncComponent(
+  () => import("./RAGAblationChart.vue"),
+)
 const props = defineProps<{ demo?: boolean }>()
 const branchOrder: EvaluationBranch[] = ["sql", "rag", "hybrid"]
+const ragPipelineOrder: RAGAblationPipeline[] = ["vector", "bm25", "rrf", "rrf_reranker"]
 const failureFilters: ("all" | EvaluationBranch)[] = ["all", ...branchOrder]
 const branchMeta = {
   sql: { label: "SQL", title: "经营数据", icon: DataAnalysis },
@@ -59,6 +64,9 @@ const multiTurnCategories = computed(() =>
 )
 const resilienceCategories = computed(() =>
   Object.entries(selectedRun.value?.evaluation_sets?.resilience?.categories ?? {}),
+)
+const ragAblationFailures = computed(() =>
+  (selectedRun.value?.rag_ablation?.failures ?? []).slice(0, 8),
 )
 
 function percent(value: number | null | undefined): string {
@@ -337,6 +345,69 @@ onMounted(refresh)
             <p>{{ selectedRun.evaluation_sets.resilience.description }}</p>
           </article>
         </div>
+      </section>
+
+      <section v-if="selectedRun.rag_ablation" class="evaluation-section rag-ablation-section">
+        <div class="evaluation-section-heading">
+          <div>
+            <span class="section-kicker">RAG RETRIEVAL ABLATION</span>
+            <h2>RAG 检索消融实验</h2>
+          </div>
+          <span>只在 {{ selectedRun.rag_ablation.answerable_cases }} 条可回答问题上计算标准指标</span>
+        </div>
+        <div class="rag-ablation-scope">
+          <article>
+            <span>制度文档</span>
+            <strong>{{ selectedRun.rag_ablation.corpus.document_count }}</strong>
+            <small>{{ selectedRun.rag_ablation.corpus.domain_count }} 个业务域</small>
+          </article>
+          <article>
+            <span>检索 Chunk</span>
+            <strong>{{ selectedRun.rag_ablation.corpus.chunk_count }}</strong>
+            <small>稳定 chunk_id</small>
+          </article>
+          <article>
+            <span>评测问题</span>
+            <strong>{{ selectedRun.rag_ablation.total_cases }}</strong>
+            <small>{{ selectedRun.rag_ablation.negative_cases }} 条库外诊断题</small>
+          </article>
+          <article>
+            <span>评测版本</span>
+            <strong class="rag-version">{{ selectedRun.rag_ablation.dataset_version }}</strong>
+            <small>Top-{{ selectedRun.rag_ablation.top_k }} chunk</small>
+          </article>
+        </div>
+        <RAGAblationChart :pipelines="selectedRun.rag_ablation.pipelines" />
+        <div class="rag-ablation-metrics-grid">
+          <article
+            v-for="pipeline in ragPipelineOrder"
+            :key="pipeline"
+            :class="{ highlight: pipeline === 'rrf_reranker' }"
+          >
+            <span>{{ selectedRun.rag_ablation.pipelines[pipeline].label }}</span>
+            <strong>{{ percent(selectedRun.rag_ablation.pipelines[pipeline].hit_at_5) }}</strong>
+            <dl>
+              <div><dt>MRR@5</dt><dd>{{ percent(selectedRun.rag_ablation.pipelines[pipeline].mrr_at_5) }}</dd></div>
+              <div><dt>nDCG@5</dt><dd>{{ percent(selectedRun.rag_ablation.pipelines[pipeline].ndcg_at_5) }}</dd></div>
+              <div><dt>P50 / P95</dt><dd>{{ latency(selectedRun.rag_ablation.pipelines[pipeline].p50_latency_ms) }} / {{ latency(selectedRun.rag_ablation.pipelines[pipeline].p95_latency_ms) }}</dd></div>
+              <div><dt>失败样本</dt><dd>{{ selectedRun.rag_ablation.pipelines[pipeline].failure_count }}</dd></div>
+            </dl>
+          </article>
+        </div>
+        <div v-if="ragAblationFailures.length" class="rag-ablation-failures">
+          <div class="rag-ablation-failure-heading">
+            <strong>失败样本（展示前 8 条）</strong>
+            <span>共 {{ selectedRun.rag_ablation.failures.length }} 条 Pipeline 失败记录</span>
+          </div>
+          <article v-for="failure in ragAblationFailures" :key="`${failure.pipeline}-${failure.case_id}`">
+            <span>{{ failure.pipeline }}</span>
+            <div><strong>{{ failure.case_id }}</strong><p>{{ failure.question }}</p></div>
+            <small>期望 {{ failure.expected_document_ids.join('、') || '无' }}<br />实际 {{ failure.retrieved_document_ids.join('、') || '无' }}</small>
+          </article>
+        </div>
+        <p class="rag-ablation-note">
+          库外问题不计入 Hit@5、MRR@5、nDCG@5；裸检索器的候选非空率只作诊断，不能替代端到端拒答率。
+        </p>
       </section>
 
       <section

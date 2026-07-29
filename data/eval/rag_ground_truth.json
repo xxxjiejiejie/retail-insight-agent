@@ -1,0 +1,1429 @@
+{
+  "dataset_version": "7cec2109a05bd900",
+  "description": "基于制度编写结构人工规则生成的 chunk 级 Ground Truth，未使用检索排名反向标注。",
+  "case_count": 80,
+  "answerable_case_count": 70,
+  "negative_case_count": 10,
+  "cases": [
+    {
+      "id": "rag-direct-001",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《退换货与售后预约退货登记管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "ac12af1882ffbb1ff768",
+          "paragraph_id": "POL-RETURN-002-S02-P01",
+          "document_id": "POL-RETURN-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-002",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《退换货与售后跨店退货处理管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "92e6fa65086b1b5a0643",
+          "paragraph_id": "POL-RETURN-003-S02-P01",
+          "document_id": "POL-RETURN-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-003",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《退换货与售后质量问题取证管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "8a736d93c741b9c2cc7a",
+          "paragraph_id": "POL-RETURN-004-S02-P01",
+          "document_id": "POL-RETURN-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-004",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《退换货与售后生鲜即时退货管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "3aca51c06586150d0fb1",
+          "paragraph_id": "POL-RETURN-005-S02-P01",
+          "document_id": "POL-RETURN-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-005",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《退换货与售后大件商品上门取件管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "8b8197ff808dd95c407a",
+          "paragraph_id": "POL-RETURN-006-S02-P01",
+          "document_id": "POL-RETURN-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-006",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《退换货与售后退款原路返回管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "fe8cabad638b9e9d44dc",
+          "paragraph_id": "POL-RETURN-007-S02-P01",
+          "document_id": "POL-RETURN-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-007",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《促销与营销审批会员日折扣审批管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "1bc459f2d59e7c045e53",
+          "paragraph_id": "POL-PROMO-002-S02-P01",
+          "document_id": "POL-PROMO-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-008",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《促销与营销审批联合品牌活动管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "4966d4318bfc394370ea",
+          "paragraph_id": "POL-PROMO-003-S02-P01",
+          "document_id": "POL-PROMO-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-009",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《促销与营销审批赠品预算管理管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "5817694d5f8fa221c876",
+          "paragraph_id": "POL-PROMO-004-S02-P01",
+          "document_id": "POL-PROMO-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-010",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《促销与营销审批异地门店投放管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "fe055c618cea348aaa08",
+          "paragraph_id": "POL-PROMO-005-S02-P01",
+          "document_id": "POL-PROMO-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-011",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《促销与营销审批直播优惠券管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "787860b1934f488770ea",
+          "paragraph_id": "POL-PROMO-006-S02-P01",
+          "document_id": "POL-PROMO-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-012",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《促销与营销审批清仓促销管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "1328c70c36714028f98b",
+          "paragraph_id": "POL-PROMO-007-S02-P01",
+          "document_id": "POL-PROMO-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-013",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《库存、盘点与调拨循环盘点管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "b7664fa61f4c186103b2",
+          "paragraph_id": "POL-INVENTORY-002-S02-P01",
+          "document_id": "POL-INVENTORY-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-014",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《库存、盘点与调拨跨店调拨申请管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "f5b808a983c1070ce6d2",
+          "paragraph_id": "POL-INVENTORY-003-S02-P01",
+          "document_id": "POL-INVENTORY-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-015",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《库存、盘点与调拨残损库存处理管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "4b13339c385a2a0b24c8",
+          "paragraph_id": "POL-INVENTORY-004-S02-P01",
+          "document_id": "POL-INVENTORY-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-016",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《库存、盘点与调拨滞销库存预警管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "488925d3262f46593880",
+          "paragraph_id": "POL-INVENTORY-005-S02-P01",
+          "document_id": "POL-INVENTORY-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-017",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《库存、盘点与调拨冷链库存交接管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "883efe0f15d9c0f4b94e",
+          "paragraph_id": "POL-INVENTORY-006-S02-P01",
+          "document_id": "POL-INVENTORY-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-018",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《库存、盘点与调拨活动库存锁定管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "e79581ea9dcec9184608",
+          "paragraph_id": "POL-INVENTORY-007-S02-P01",
+          "document_id": "POL-INVENTORY-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-019",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《会员、积分与权益生日权益发放管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "0ba0b0e887764b7e5738",
+          "paragraph_id": "POL-MEMBER-002-S02-P01",
+          "document_id": "POL-MEMBER-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-020",
+      "split": "dev",
+      "category": "direct_fact",
+      "question": "《会员、积分与权益退货积分冲正管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "da83d67c0712549069ff",
+          "paragraph_id": "POL-MEMBER-003-S02-P01",
+          "document_id": "POL-MEMBER-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-021",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《会员、积分与权益会员等级升级管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "11cbe580e97aa62f75cf",
+          "paragraph_id": "POL-MEMBER-004-S02-P01",
+          "document_id": "POL-MEMBER-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-022",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《会员、积分与权益会员券到期提醒管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "7d866204a6f5927aa5f8",
+          "paragraph_id": "POL-MEMBER-005-S02-P01",
+          "document_id": "POL-MEMBER-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-023",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《会员、积分与权益权益转赠管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "3227dba2c030b2a3a9ec",
+          "paragraph_id": "POL-MEMBER-006-S02-P01",
+          "document_id": "POL-MEMBER-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-024",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《会员、积分与权益积分异常申诉管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "b6097b439e4e6cbd3fd7",
+          "paragraph_id": "POL-MEMBER-007-S02-P01",
+          "document_id": "POL-MEMBER-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-025",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《客户隐私与数据安全客户数据导出管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "fcef5290d35095895627",
+          "paragraph_id": "POL-PRIVACY-002-S02-P01",
+          "document_id": "POL-PRIVACY-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-026",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《客户隐私与数据安全客户信息脱敏管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "d032cbb3a4f8577fbe92",
+          "paragraph_id": "POL-PRIVACY-003-S02-P01",
+          "document_id": "POL-PRIVACY-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-027",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《客户隐私与数据安全数据访问复核管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "03912b84b93533f07207",
+          "paragraph_id": "POL-PRIVACY-004-S02-P01",
+          "document_id": "POL-PRIVACY-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-028",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《客户隐私与数据安全业务数据留存管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "636b07fdeff75f1658fa",
+          "paragraph_id": "POL-PRIVACY-005-S02-P01",
+          "document_id": "POL-PRIVACY-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-029",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《客户隐私与数据安全供应商数据共享管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "4f7d23bddce14ddc4015",
+          "paragraph_id": "POL-PRIVACY-006-S02-P01",
+          "document_id": "POL-PRIVACY-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-030",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《客户隐私与数据安全隐私事件上报管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "bffdf39bff2e0182ca41",
+          "paragraph_id": "POL-PRIVACY-007-S02-P01",
+          "document_id": "POL-PRIVACY-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-031",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《绩效目标与考核月度目标下达管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "ef0a2a933e1e452ed52f",
+          "paragraph_id": "POL-PERFORMANCE-002-S02-P01",
+          "document_id": "POL-PERFORMANCE-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-032",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《绩效目标与考核区域目标调整管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "1fc61df9236c60bdee28",
+          "paragraph_id": "POL-PERFORMANCE-003-S02-P01",
+          "document_id": "POL-PERFORMANCE-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-033",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《绩效目标与考核新店爬坡考核管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "dba0fb90d30e1d3ea147",
+          "paragraph_id": "POL-PERFORMANCE-004-S02-P01",
+          "document_id": "POL-PERFORMANCE-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-034",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《绩效目标与考核提成复核管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "438709d0916807333458",
+          "paragraph_id": "POL-PERFORMANCE-005-S02-P01",
+          "document_id": "POL-PERFORMANCE-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-035",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《绩效目标与考核出勤系数核算管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "3ce99d5028bb3f5c9ed0",
+          "paragraph_id": "POL-PERFORMANCE-006-S02-P01",
+          "document_id": "POL-PERFORMANCE-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-036",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《绩效目标与考核服务评分纳入管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "a56ca94fb1e0b6618489",
+          "paragraph_id": "POL-PERFORMANCE-007-S02-P01",
+          "document_id": "POL-PERFORMANCE-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-037",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《定价、折扣与价签新品首发定价管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "e623fe07c6183d872d7c",
+          "paragraph_id": "POL-PRICE-002-S02-P01",
+          "document_id": "POL-PRICE-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-038",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《定价、折扣与价签区域价格差异管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "76af3682a58926e3adc0",
+          "paragraph_id": "POL-PRICE-003-S02-P01",
+          "document_id": "POL-PRICE-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-039",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《定价、折扣与价签临期商品降价管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "19d2a87ab4fc0e3e5f49",
+          "paragraph_id": "POL-PRICE-004-S02-P01",
+          "document_id": "POL-PRICE-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-040",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《定价、折扣与价签竞品价格应对管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "dde3ada74170f1953b50",
+          "paragraph_id": "POL-PRICE-005-S02-P01",
+          "document_id": "POL-PRICE-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-041",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《定价、折扣与价签价签变更管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "e033a534e967bf26020c",
+          "paragraph_id": "POL-PRICE-006-S02-P01",
+          "document_id": "POL-PRICE-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-042",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《定价、折扣与价签收银舍入规则管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "5626499c48d11fc2b62e",
+          "paragraph_id": "POL-PRICE-007-S02-P01",
+          "document_id": "POL-PRICE-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-043",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《订单、支付与异常处理重复支付订单管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "72f539dbe962dd74cc2c",
+          "paragraph_id": "POL-ORDER-002-S02-P01",
+          "document_id": "POL-ORDER-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-044",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《订单、支付与异常处理收银超时订单管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "b312cba176467d5e11a7",
+          "paragraph_id": "POL-ORDER-003-S02-P01",
+          "document_id": "POL-ORDER-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-045",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《订单、支付与异常处理配送延迟订单管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "4888e8919f20daaa108b",
+          "paragraph_id": "POL-ORDER-004-S02-P01",
+          "document_id": "POL-ORDER-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-046",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《订单、支付与异常处理高价值订单复核管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "d55024bc649ba33c149c",
+          "paragraph_id": "POL-ORDER-005-S02-P01",
+          "document_id": "POL-ORDER-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-047",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《订单、支付与异常处理优惠券异常使用管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "6c48adcb06844f205fef",
+          "paragraph_id": "POL-ORDER-006-S02-P01",
+          "document_id": "POL-ORDER-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-048",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《订单、支付与异常处理拣货后取消管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "ab54c56ef3d43510ca1b",
+          "paragraph_id": "POL-ORDER-007-S02-P01",
+          "document_id": "POL-ORDER-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-049",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《门店运营与服务规范闭店交接管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "ae75e9d48c8cc1aeaf8b",
+          "paragraph_id": "POL-STORE-002-S02-P01",
+          "document_id": "POL-STORE-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-050",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《门店运营与服务规范高峰排队管理管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "78406f5a5698c4718906",
+          "paragraph_id": "POL-STORE-003-S02-P01",
+          "document_id": "POL-STORE-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-051",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《门店运营与服务规范顾客投诉接待管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "4bf5041b13cff9a15454",
+          "paragraph_id": "POL-STORE-004-S02-P01",
+          "document_id": "POL-STORE-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-052",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《门店运营与服务规范服务补救管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "78448779c06401026311",
+          "paragraph_id": "POL-STORE-005-S02-P01",
+          "document_id": "POL-STORE-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-053",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《门店运营与服务规范失物招领管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "c2a40bbd001ec2854e52",
+          "paragraph_id": "POL-STORE-006-S02-P01",
+          "document_id": "POL-STORE-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-054",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《门店运营与服务规范门店温度记录管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "7470f64bae06ced24cf3",
+          "paragraph_id": "POL-STORE-007-S02-P01",
+          "document_id": "POL-STORE-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-055",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《采购、供应商与物流采购申请管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-002"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "3dda90f1038bc3932d98",
+          "paragraph_id": "POL-PROCUREMENT-002-S02-P01",
+          "document_id": "POL-PROCUREMENT-002",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-056",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《采购、供应商与物流询价比价管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-003"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "1d2670af3ab6f257582a",
+          "paragraph_id": "POL-PROCUREMENT-003-S02-P01",
+          "document_id": "POL-PROCUREMENT-003",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-057",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《采购、供应商与物流到货验收管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-004"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "90f8f349a4c48171b648",
+          "paragraph_id": "POL-PROCUREMENT-004-S02-P01",
+          "document_id": "POL-PROCUREMENT-004",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-058",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《采购、供应商与物流供应商评价管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-005"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "fe50fd45cf0d0f1864d6",
+          "paragraph_id": "POL-PROCUREMENT-005-S02-P01",
+          "document_id": "POL-PROCUREMENT-005",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-059",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《采购、供应商与物流供应商延迟交付管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-006"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "964ec7fd5145620527bb",
+          "paragraph_id": "POL-PROCUREMENT-006-S02-P01",
+          "document_id": "POL-PROCUREMENT-006",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-direct-060",
+      "split": "test",
+      "category": "direct_fact",
+      "question": "《采购、供应商与物流采购合同变更管理细则》由谁发起，常规处理时限是多少？",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-007"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "0598839a7cb02a8a5ef5",
+          "paragraph_id": "POL-PROCUREMENT-007-S02-P01",
+          "document_id": "POL-PROCUREMENT-007",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-001",
+      "split": "dev",
+      "category": "cross_document",
+      "question": "比较《退换货与售后换货库存锁定管理细则》与《促销与营销审批促销复盘管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-RETURN-008",
+        "POL-PROMO-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "981fddcaef9635e4c8bc",
+          "paragraph_id": "POL-RETURN-008-S02-P01",
+          "document_id": "POL-RETURN-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "8026c616d33fd46fb2a7",
+          "paragraph_id": "POL-PROMO-009-S02-P01",
+          "document_id": "POL-PROMO-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-002",
+      "split": "dev",
+      "category": "cross_document",
+      "question": "比较《促销与营销审批节假日延长营业管理细则》与《库存、盘点与调拨短少差异复核管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROMO-008",
+        "POL-INVENTORY-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "9b16637e824fd3587a03",
+          "paragraph_id": "POL-PROMO-008-S02-P01",
+          "document_id": "POL-PROMO-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "b6bbeaca0850e408ae2f",
+          "paragraph_id": "POL-INVENTORY-009-S02-P01",
+          "document_id": "POL-INVENTORY-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-003",
+      "split": "dev",
+      "category": "cross_document",
+      "question": "比较《库存、盘点与调拨盘点冻结窗口管理细则》与《会员、积分与权益会员专场活动管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-INVENTORY-008",
+        "POL-MEMBER-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "8bed52b2332442012f46",
+          "paragraph_id": "POL-INVENTORY-008-S02-P01",
+          "document_id": "POL-INVENTORY-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "ae66a5ef04a5fe8a6690",
+          "paragraph_id": "POL-MEMBER-009-S02-P01",
+          "document_id": "POL-MEMBER-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-004",
+      "split": "dev",
+      "category": "cross_document",
+      "question": "比较《会员、积分与权益会员账号合并管理细则》与《客户隐私与数据安全营销授权管理管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-MEMBER-008",
+        "POL-PRIVACY-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "03c4d9e64ffe04b0f479",
+          "paragraph_id": "POL-MEMBER-008-S02-P01",
+          "document_id": "POL-MEMBER-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "e8292a81c3bc187ebd4f",
+          "paragraph_id": "POL-PRIVACY-009-S02-P01",
+          "document_id": "POL-PRIVACY-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-005",
+      "split": "test",
+      "category": "cross_document",
+      "question": "比较《客户隐私与数据安全门店影像调阅管理细则》与《绩效目标与考核季度校准会议管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRIVACY-008",
+        "POL-PERFORMANCE-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "38c9f981b8a551e70912",
+          "paragraph_id": "POL-PRIVACY-008-S02-P01",
+          "document_id": "POL-PRIVACY-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "15a6962f39072df690a8",
+          "paragraph_id": "POL-PERFORMANCE-009-S02-P01",
+          "document_id": "POL-PERFORMANCE-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-006",
+      "split": "test",
+      "category": "cross_document",
+      "question": "比较《绩效目标与考核绩效申诉复核管理细则》与《定价、折扣与价签线上线下一致价管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PERFORMANCE-008",
+        "POL-PRICE-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "9e25f66f5841ebe5ffe4",
+          "paragraph_id": "POL-PERFORMANCE-008-S02-P01",
+          "document_id": "POL-PERFORMANCE-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "d4d5d63a6f18bf3e2a79",
+          "paragraph_id": "POL-PRICE-009-S02-P01",
+          "document_id": "POL-PRICE-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-007",
+      "split": "test",
+      "category": "cross_document",
+      "question": "比较《定价、折扣与价签组合商品定价管理细则》与《订单、支付与异常处理拆单配送管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PRICE-008",
+        "POL-ORDER-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "b42b0a64a7315c13b994",
+          "paragraph_id": "POL-PRICE-008-S02-P01",
+          "document_id": "POL-PRICE-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "8b8fbba36df8d89fa4ed",
+          "paragraph_id": "POL-ORDER-009-S02-P01",
+          "document_id": "POL-ORDER-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-008",
+      "split": "test",
+      "category": "cross_document",
+      "question": "比较《订单、支付与异常处理发票信息更正管理细则》与《门店运营与服务规范应急演练管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-ORDER-008",
+        "POL-STORE-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "74d28b1c036103921343",
+          "paragraph_id": "POL-ORDER-008-S02-P01",
+          "document_id": "POL-ORDER-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "73a5bb674c2ae95471e8",
+          "paragraph_id": "POL-STORE-009-S02-P01",
+          "document_id": "POL-STORE-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-009",
+      "split": "test",
+      "category": "cross_document",
+      "question": "比较《门店运营与服务规范设备故障报修管理细则》与《采购、供应商与物流采购发票匹配管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-STORE-008",
+        "POL-PROCUREMENT-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "0fbda50f2040a71ea905",
+          "paragraph_id": "POL-STORE-008-S02-P01",
+          "document_id": "POL-STORE-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "4c7d781d353d66ebfd23",
+          "paragraph_id": "POL-PROCUREMENT-009-S02-P01",
+          "document_id": "POL-PROCUREMENT-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-cross-010",
+      "split": "test",
+      "category": "cross_document",
+      "question": "比较《采购、供应商与物流冷链运输管理细则》与《退换货与售后赠品退回管理细则》的审批门槛和复核要求。",
+      "expect_answer": true,
+      "expected_document_ids": [
+        "POL-PROCUREMENT-008",
+        "POL-RETURN-009"
+      ],
+      "relevant_chunks": [
+        {
+          "chunk_id": "084f8b100c2f33457235",
+          "paragraph_id": "POL-PROCUREMENT-008-S02-P01",
+          "document_id": "POL-PROCUREMENT-008",
+          "relevance": 2
+        },
+        {
+          "chunk_id": "b2701afe34b7bcae4fad",
+          "paragraph_id": "POL-RETURN-009-S02-P01",
+          "document_id": "POL-RETURN-009",
+          "relevance": 2
+        }
+      ]
+    },
+    {
+      "id": "rag-negative-001",
+      "split": "dev",
+      "category": "out_of_corpus",
+      "question": "公司无人机配送的飞行高度上限是多少？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-002",
+      "split": "dev",
+      "category": "out_of_corpus",
+      "question": "海外门店使用哪一种加密货币结算？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-003",
+      "split": "dev",
+      "category": "out_of_corpus",
+      "question": "员工宿舍宠物饲养需要缴纳多少押金？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-004",
+      "split": "dev",
+      "category": "out_of_corpus",
+      "question": "工厂机器人焊接参数由哪个岗位审批？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-005",
+      "split": "test",
+      "category": "out_of_corpus",
+      "question": "公司班车周末最晚一班几点发车？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-006",
+      "split": "test",
+      "category": "out_of_corpus",
+      "question": "自建数据中心的液冷温度标准是多少？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-007",
+      "split": "test",
+      "category": "out_of_corpus",
+      "question": "海外仓海运保险的免赔额是多少？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-008",
+      "split": "test",
+      "category": "out_of_corpus",
+      "question": "直播主播的个人服装补贴标准是多少？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-009",
+      "split": "test",
+      "category": "out_of_corpus",
+      "question": "门店屋顶光伏的并网电压是多少？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    },
+    {
+      "id": "rag-negative-010",
+      "split": "test",
+      "category": "out_of_corpus",
+      "question": "公司航空货运包机每月可以申请几次？",
+      "expect_answer": false,
+      "expected_document_ids": [],
+      "relevant_chunks": []
+    }
+  ]
+}

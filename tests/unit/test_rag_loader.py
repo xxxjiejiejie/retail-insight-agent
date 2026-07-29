@@ -7,11 +7,11 @@ from app.rag.loader import chunk_policy_document, load_policy_document, load_pol
 DOCUMENTS_DIR = Path(__file__).resolve().parents[2] / "data" / "documents"
 
 
-def test_loads_original_policy_documents_with_unique_ids() -> None:
+def test_loads_expanded_policy_documents_with_unique_ids() -> None:
     documents = load_policy_documents(DOCUMENTS_DIR)
 
-    assert len(documents) == 8
-    assert len({document.document_id for document in documents}) == 8
+    assert len(documents) == 100
+    assert len({document.document_id for document in documents}) == 100
     assert all(document.version == "1.0" for document in documents)
 
 

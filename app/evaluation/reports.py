@@ -24,6 +24,15 @@ def _report_entries(path: Path) -> list[dict[str, Any]]:
     return [entry for entry in payload if isinstance(entry, dict)]
 
 
+def _optional_object_report(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    payload = _load_json(path)
+    if not isinstance(payload, dict):
+        raise ValueError(f"评测报告必须是 JSON 对象：{path.name}")
+    return payload
+
+
 def _as_number(value: object) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -385,6 +394,7 @@ def build_evaluation_run(
     challenge_path = report_directory / "challenge_eval_report.json"
     multiturn_path = report_directory / "multiturn_live_report.json"
     resilience_path = report_directory / "resilience_eval_report.json"
+    rag_ablation_path = report_directory / "rag_ablation_report.json"
     hybrid_paths = (
         [hybrid_default]
         if hybrid_default.exists()
@@ -400,6 +410,7 @@ def build_evaluation_run(
     challenge_entries = _report_entries(challenge_path)
     multiturn_entries = _report_entries(multiturn_path)
     resilience_entries = _report_entries(resilience_path)
+    rag_ablation = _optional_object_report(rag_ablation_path)
 
     branches = {
         "sql": _branch_summary(sql_entries, coverage="真实模型 SQL 结果比对"),
@@ -437,6 +448,7 @@ def build_evaluation_run(
         challenge_path,
         multiturn_path,
         resilience_path,
+        rag_ablation_path,
     ]
     source_reports = [path.name for path in source_paths if path.exists()]
     notes = ["本地 100 项质量门禁不计入 SQL/RAG/Hybrid 端到端准确率。"]
@@ -488,6 +500,7 @@ def build_evaluation_run(
         "improvements": _improvements(eval_directory),
         "quality_gate": _quality_gate(report_directory),
         "failures": failures,
+        "rag_ablation": rag_ablation,
         "source_reports": source_reports,
         "notes": notes,
     }
